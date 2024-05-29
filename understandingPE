@@ -1,0 +1,324 @@
+--> Playerstub create a openuri command = [map playerengine_id/ map media_id] to the playerprovider
+
+-->> PLAYER-PROVIDER:
+
+// async call
+    com_lge_player_engine_call_set_uri(
+        playerengine_proxy_[proxyId],
+        uri.c_str(),
+        ss.str().c_str(),
+        NULL,
+        (GAsyncReadyCallback)PlayerProvider::callAsyncCallback,
+        (gpointer*)new std::pair<PlayerProvider*, command::BaseCommand*>(this, command)
+
+
+
+-->> D-Bus Playerservice :
+
+gboolean DBusPlayerService::SetURI(ComLgePlayerEngine *skeleton,
+                                   GDBusMethodInvocation *invocation,
+                                   gchar* uri,
+                                   gchar* option,
+                                   gpointer user_data) {
+  MMLogInfo("SetURI : uri: %s ,option : %s", uri, option);
+
+  if (uri == NULL || option == NULL) {
+    return false;
+  }
+
+  //char slot = -1;
+  DBusPlayerService* instance = (DBusPlayerService*)user_data;
+  //std::string str(uri);
+  //if (str.length() > 2 && uri[0] == '[' && uri[2] == ']') {
+  //  slot = uri[1];
+  //  uri += 3;
+  //}
+  bool result = instance->player_->SetURI(uri, option);
+  com_lge_player_engine_complete_set_uri(skeleton, invocation, result);
+  return result;
+}
+
+-->> DBus player interface :
+
+com_lge_player_engine_call_set_uri:
+ * @proxy: A #ComLgePlayerEngineProxy.
+ * @arg_uri: Argument to pass with the method invocation.
+ * @arg_option: Argument to pass with the method invocation.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback to call when the request is satisfied or %NULL.
+ * @user_data: User data to pass to @callback.
+ *
+ * Asynchronously invokes the <link linkend="gdbus-method-com-lge-PlayerEngine.SetURI">SetURI()</link> D-Bus method on @proxy.
+ * When the operation is finished, @callback will be invoked in the <link linkend="g-main-context-push-thread-default">thread-default main loop</link> of the thread you are calling this method from.
+ * You can then call com_lge_player_engine_call_set_uri_finish() to get the result of the operation.
+ *
+ * See com_lge_player_engine_call_set_uri_sync() for the synchronous, blocking version of this method.
+ */
+
+
+void
+com_lge_player_engine_call_set_uri (
+    ComLgePlayerEngine *proxy,
+    const gchar *arg_uri,
+    const gchar *arg_option,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  g_dbus_proxy_call (G_DBUS_PROXY (proxy),
+    "
+    ",
+    g_variant_new ("(ss)",
+                   arg_uri,
+                   arg_option),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    cancellable,
+    callback,
+    user_data);
+}
+
+
+-->> D-Bus Playerservice :
+
+gboolean DBusPlayerService::SetURI(ComLgePlayerEngine *skeleton,
+                                   GDBusMethodInvocation *invocation,
+                                   gchar* uri,
+                                   gchar* option,
+                                   gpointer user_data) {
+  MMLogInfo("SetURI : uri: %s ,option : %s", uri, option);
+
+  if (uri == NULL || option == NULL) {
+    return false;
+  }
+
+  //char slot = -1;
+  DBusPlayerService* instance = (DBusPlayerService*)user_data;
+  //std::string str(uri);
+  //if (str.length() > 2 && uri[0] == '[' && uri[2] == ']') {
+  //  slot = uri[1];
+  //  uri += 3;
+  //}
+  bool result = instance->player_->SetURI(uri, option);
+  com_lge_player_engine_complete_set_uri(skeleton, invocation, result);
+  return result;
+}
+
+-->> Media-player:
+
+bool MediaPlayer::SetURI(const std::string& uri, int media_type) {
+  MediaPlayerInit();
+  Internal(uri, media_type);
+  return pipeline_->Load(uri);
+}
+
+bool MediaPlayer::SetURI(const std::string& uri, const std::string& option) {
+  MediaPlayerInit();
+  using boost::property_tree::ptree;
+  
+bool MediaPlayer::SetURI(const std::string& uri, const std::string& option) {
+  MediaPlayerInit();
+  Internal(uri, media_type);
+
+
+  bool need_convert = false; // need audioconvert or ccRC 5.1ch 2nd slot
+  bool duration_check = false;
+  char slot_6ch = '0';
+  char slot = '0';
+  int channel = 0;
+  int media_type = TYPE_UNSUPPORTED;
+  double exec_time = 0;
+  AVCodecID codec_id = AVCodecID::AV_CODEC_ID_NONE;
+  
+//bool need_convert = false;
+  bool duration_check = false;
+  char slot_6ch = '0';
+  char slot = '0';
+  int channel = 0;
+  int media_type = TYPE_UNSUPPORTED;
+  double exec_time = 0;
+  AVCodecID codec_id = AVCodecID::AV_CODEC_ID_NONE;
+  
+//bool need_convert = false;
+  bool duration_check = false;
+  char slot_6ch = '0';
+  char slot = '0';
+  int channel = 0;
+  int media_type = TYPE_UNSUPPORTED;
+  double exec_time = 0;
+  AVCodecID codec_id = AVCodecID::AV_CODEC_ID_NONE;
+  
+
+  ptree tree;
+  std::string media_type_str;
+  std::stringstream stream(option);
+  try {
+    boost::property_tree::read_json(stream, tree);
+  } catch (const boost::property_tree::ptree_error& exception) {
+    LOG_INFO("Invalid JSON Format - %s", exception.what());
+    return false;
+  }
+  
+  ptree tree;
+  std::string media_type_str;
+  std::
+
+  auto iter = tree.begin();
+  ptree info = iter->second;
+  if (info.get_optional<std::string>("mediatype")) {
+    media_type_str = info.get<std::string>("mediatype");
+    auto iteration = kMediaType.find(media_type_str);
+    if (iteration != kMediaType.end()) {
+      media_type = iteration->second;
+      media_type_str_ = media_type_str;
+      if (audio_controller_)
+        audio_controller_->setMediaType(media_type_str);
+    } else {
+      LOG_WARN("unknown media type=[%s]", media_type_str.c_str());
+    }
+  } else {
+    LOG_WARN("there is no media type..");
+  }
+
+  if (info.get_optional<std::string>("channel")) {
+    channel = std::stoi(info.get<std::string>("channel"));
+    LOG_INFO("#### Received channel = [%d]", channel);
+  }
+  if (info.get_optional<char>("2ch_slot")) {
+    slot = info.get<char>("2ch_slot");
+    LOG_INFO("#### Received 2ch_slot = [%c]", slot);
+  }
+  if (info.get_optional<char>("6ch_slot")) {
+    slot_6ch = info.get<char>("6ch_slot");
+    LOG_INFO("#### Received 6ch_slot = [%c]", slot_6ch);
+    need_convert = (slot_6ch == '1') ? true : false;
+  }
+
+  // KAKAO_I
+  if ((media_type_str.compare("kakao_i") == 0) || (media_type_str.compare("kakao_i2") == 0)
+       || (media_type_str.compare("kakao_i3") == 0)) {
+    if (std::string::npos != uri.find("file://")) {
+      LOG_INFO("kakao_i plays local file");
+      media_type = TYPE_AUDIO;
+    } else if (std::string::npos != uri.find(".m3u8")) {
+      LOG_INFO("kakao_i plays HLS contents");
+      media_type = TYPE_3RD_AUDIO;
+    }
+  // Kidscare
+  } else if (media_type_str.compare("kids_video") == 0) {
+    if (std::string::npos != uri.find(".mp3")) {
+      LOG_INFO("kids_video, but plays audio format file");
+      media_type = TYPE_AUDIO;
+    } else if (std::string::npos != uri.find(".m3u")) {
+      LOG_INFO("kids_video, but plays audio playlist file");
+      media_type = TYPE_AUDIO;
+    }
+  // DVRS front&rear
+  } else if (media_type == TYPE_DVRS) {
+    LOG_INFO("dvrs media, use static pipeline - but need to check audio track");
+    duration_check = false;
+    channel = 0;
+    if (audio_controller_) {
+      channel = audio_controller_->getAudioChannel(uri, slot, channel, &need_convert, &codec_id, &exec_time);
+    }
+  // Other media
+  } else {
+    if (std::string::npos != uri.find("file://")) {
+      duration_check = true;
+    }
+    if (audio_controller_) {
+      channel = audio_controller_->getAudioChannel(uri, slot, channel, &need_convert, &codec_id, &exec_time);
+    }
+  }
+
+  if (!need_fade_out_) {
+    fadeOut((int)(100L - exec_time));
+  } else {
+    fadeOut(100L);
+  }
+  need_fade_out_ = false;
+  need_fade_in_ = true;
+
+  LOG_INFO("media type[%d][%s], channel=[%d], slot=[%c]", media_type, media_type_str_.c_str(), channel, slot);
+  SetURIInternal(uri, media_type);
+
+  if (audio_controller_ && duration_check) {
+      pipeline_->SetAudioDuration(audio_controller_->getAudioDuration(uri));
+  }
+
+  if ((media_type_str.compare("kakao_i") != 0) && (media_type_str.compare("kakao_i2") != 0)
+      && (media_type_str.compare("kakao_i3") != 0)) { // kakao_i doesn't have next/prev usecase
+    TimerCallback start_callback = std::bind(&MediaPlayer::updateTimerFlag, this);
+    start_timer_->AddCallback(start_callback, 1000);
+    start_timer_->Start();
+  }
+
+  return pipeline_->Load(uri, option, channel, need_convert, slot);
+}
+
+--> CREATOR :
+
+
+Pipeline* PipelineCreator::CreatePipeline(int& media_type, const std::string& uri) {
+  error_reason_ = ERROR_NONE;
+  media_type_ = media_type;
+
+  int ret_media_type = ParsePipelineType(uri);
+  media_type = ret_media_type;
+
+  if (ret_media_type == TYPE_AUDIO) {
+    return new AudioPipeline();
+  } else if (ret_media_type == TYPE_STREAMING) {
+    return new StreamingPipeline();
+  } else if (ret_media_type == TYPE_3RD_AUDIO) {
+    LOG_INFO("Going to create a pipeline for VisualOn pipeline");
+    return new VisualOnPipeline();
+  } else if (ret_media_type == TYPE_VIDEO) {
+    return new VideoPipeline();
+  } else if (ret_media_type == TYPE_THUMBNAIL) {
+    return new ThumbnailPipeline();
+  } else if (ret_media_type == TYPE_UNSUPPORTED) {
+    return new NullPipeline();
+#ifdef PLATFORM_BROXTON
+  } else if (ret_media_type == TYPE_DVD) {
+    return new DvdPipeline();
+#endif
+  } else if (ret_media_type == TYPE_TRANSCODE) {
+    LOG_:NFO("TranscodePipeline");
+    return new TranscodePipeline();
+  } else if (ret_media_type == TYPE_DVRS) {
+    return new DVRSPipeline();
+  } else {
+    return new NullPipeline();
+  }
+}
+
+
+--> PIPELINE :
+
+AudioPipeline Class
+AudioPipeline::AudioPipeline()
+  : gst_media_(GstMedia::Instance()),
+    audio_sink_(),
+    position_timer_(new Timer()),
+    trick_timer_(new Timer()),
+    trick_playdone_timer_(new Timer()),
+    check_playback_timer_(new Timer()),
+    event_(new Event()),
+    pb_info_(),
+    source_info_(),
+    media_type_(),
+    duration_count_(0),
+    audio_count_(0),
+    audio_channel_(0),
+    audio_slot_(-1),
+    audio_6ch_slot_('0'),
+    use_atmos_(false),
+    is_dsd_(false),
+    last_seek_pos_(-1),
+    av_duration_(-1),
+    bIsDolby(false),
+    playlist_(),
+    bIsDolbyAtmosEacJoc(false) {
+  LOG_DEBUG("");
+}
