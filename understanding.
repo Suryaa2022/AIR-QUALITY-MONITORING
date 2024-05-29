@@ -1,0 +1,566 @@
+-->> PLAYER-PROVIDER:
+
+// async call
+    com_lge_player_engine_call_set_uri(
+        playerengine_proxy_[proxyId],
+        uri.c_str(),
+        ss.str().c_str(),
+        NULL,
+        (GAsyncReadyCallback)PlayerProvider::callAsyncCallback,
+        (gpointer*)new std::pair<PlayerProvider*, command::BaseCommand*>(this, command)
+
+
+
+-->> D-Bus Playerservice :
+
+gboolean DBusPlayerService::SetURI(ComLgePlayerEngine *skeleton,
+                                   GDBusMethodInvocation *invocation,
+                                   gchar* uri,
+                                   gchar* option,
+                                   gpointer user_data) {
+  MMLogInfo("SetURI : uri: %s ,option : %s", uri, option);
+
+  if (uri == NULL || option == NULL) {
+    return false;
+  }
+
+  //char slot = -1;
+  DBusPlayerService* instance = (DBusPlayerService*)user_data;
+  //std::string str(uri);
+  //if (str.length() > 2 && uri[0] == '[' && uri[2] == ']') {
+  //  slot = uri[1];
+  //  uri += 3;
+  //}
+  bool result = instance->player_->SetURI(uri, option);
+  com_lge_player_engine_complete_set_uri(skeleton, invocation, result);
+  return result;
+}
+
+-->> DBus player interface :
+
+com_lge_player_engine_call_set_uri:
+ * @proxy: A #ComLgePlayerEngineProxy.
+ * @arg_uri: Argument to pass with the method invocation.
+ * @arg_option: Argument to pass with the method invocation.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback to call when the request is satisfied or %NULL.
+ * @user_data: User data to pass to @callback.
+ *
+ * Asynchronously invokes the <link linkend="gdbus-method-com-lge-PlayerEngine.SetURI">SetURI()</link> D-Bus method on @proxy.
+ * When the operation is finished, @callback will be invoked in the <link linkend="g-main-context-push-thread-default">thread-default main loop</link> of the thread you are calling this method from.
+ * You can then call com_lge_player_engine_call_set_uri_finish() to get the result of the operation.
+ *
+ * See com_lge_player_engine_call_set_uri_sync() for the synchronous, blocking version of this method.
+ */
+
+
+void
+com_lge_player_engine_call_set_uri (
+    ComLgePlayerEngine *proxy,
+    const gchar *arg_uri,
+    const gchar *arg_option,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  g_dbus_proxy_call (G_DBUS_PROXY (proxy),
+    "
+    ",
+    g_variant_new ("(ss)",
+                   arg_uri,
+                   arg_option),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    cancellable,
+    callback,
+    user_data);
+}
+
+
+-->> Media-player:
+
+void MediaPlayer::CreatePipeline(int media_type, const std::string& uri) {
+  Pipeline* pipeline = creator_->CreatePipeline(media_type, uri);
+  media_type_ = media_type;
+  pipeline_.reset(pipeline);
+}
+
+--> CREATOR :
+
+
+Pipeline* PipelineCreator::CreatePipeline(int& media_type, const std::string& uri) {
+  error_reason_ = ERROR_NONE;
+  media_type_ = media_type;
+
+  int ret_media_type = ParsePipelineType(uri);
+  media_type = ret_media_type;
+
+  if (ret_media_type == TYPE_AUDIO) {
+    return new AudioPipeline();
+  } else if (ret_media_type == TYPE_STREAMING) {
+    return new StreamingPipeline();
+  } else if (ret_media_type == TYPE_3RD_AUDIO) {
+    LOG_INFO("Going to create a pipeline for VisualOn pipeline");
+    return new VisualOnPipeline();
+  } else if (ret_media_type == TYPE_VIDEO) {
+    return new VideoPipeline();
+  } else if (ret_media_type == TYPE_THUMBNAIL) {
+    return new ThumbnailPipeline();
+  } else if (ret_media_type == TYPE_UNSUPPORTED) {
+    return new NullPipeline();
+#ifdef PLATFORM_BROXTON
+  } else if (ret_media_type == TYPE_DVD) {
+    return new DvdPipeline();
+#endif
+  } else if (ret_media_type == TYPE_TRANSCODE) {
+    LOG_:NFO("TranscodePipeline");
+    return new TranscodePipeline();
+  } else if (ret_media_type == TYPE_DVRS) {
+    return new DVRSPipeline();
+  } else {
+    return new NullPipeline();
+  }
+}
+
+
+--> PIPELINE :
+
+AudioPipeline Class
+AudioPipeline::AudioPipeline()
+  : gst_media_(GstMedia::Instance()),
+    audio_sink_(),
+    position_timer_(new Timer()),
+    trick_timer_(new Timer()),
+    trick_playdone_timer_(new Timer()),
+    check_playback_timer_(new Timer()),
+    event_(new Event()),
+    pb_info_(),
+    source_info_(),
+    media_type_(),
+    duration_count_(0),
+    audio_count_(0),
+    audio_channel_(0),
+    audio_slot_(-1),
+    audio_6ch_slot_('0'),
+    use_atmos_(false),
+    is_dsd_(false),
+    last_seek_pos_(-1),
+    av_duration_(-1),
+    bIsDolby(false),
+    playlist_(),
+    bIsDolbyAtmosEacJoc(false) {
+  LOG_DEBUG("");
+}
+
+D-Bus player service :
+
+
+gboolean DBusPlayerService::SetURI(ComLgePlayerEngine *skeleton,
+                                   GDBusMethodInvocation *invocation,
+                                   gchar* uri,
+                                   gchar* option,
+                                   gpointer user_data) {
+  MMLogInfo("SetURI : uri: %s ,option : %s", uri, option);
+
+  if (uri == NULL || option == NULL) {
+    return false;
+  }
+
+  //char slot = -1;
+  DBusPlayerService* instance = (DBusPlayerService*)user_data;
+  //std::string str(uri);
+  //if (str.length() > 2 && uri[0] == '[' && uri[2] == ']') {
+  //  slot = uri[1];
+  //  uri += 3;
+  //}
+  bool result = instance->player_->SetURI(uri, option);
+  com_lge_player_engine_complete_set_uri(skeleton, invocation, result);
+  return result;
+}
+
+--> Streaming pipeline :
+
+namespace genivimedia {
+
+StreamingPipeline::StreamingPipeline()
+  : gst_media_(GstMedia::Instance()),
+    audio_sink_(nullptr),
+    video_sink_(nullptr),
+    video_filter_(nullptr),
+    position_timer_(new Timer()),
+    trick_timer_(new Timer()),
+    trick_playdone_timer_(new Timer()),
+    check_playback_timer_(new Timer()),
+    event_(new Event()),
+    pb_info_(),
+    source_info_(),
+    media_type_(),
+    duration_count_(0),
+    audio_count_(0),
+    audio_channel_(0),
+    audio_slot_(-1),
+    audio_6ch_slot_('0'),
+    need_buffering_done_(false),
+    need_covert_(true),
+    need_cache_buffering_(true),
+    cache_flag_(false),
+    cache_path_(),
+    use_video_(false),
+    no_audio_mode_(false),
+    show_preroll(true),
+    pause_when_buffering_(true),
+#ifdef USE_SUBTITLE
+    subtitle_controller_(new SubtitleController(gst_media_, event_)),
+#endif
+    subtitle_path_(),
+    last_seek_pos_(-1),
+    buffering_level_(-1),
+    use_redirect_uri_(false),
+    drm_token_(),
+    need_buffering_start_(false) {
+  LOG_DEBUG("");
+}
+
+------------------------------------------------------------------>>>
+--> PLAY COMMAND :
+
+-> MediaPlayer
+
+bool MediaPlayer::Play() {
+  bool ret = false;
+  MediaPlayerInit();
+
+  if (media_type_ == TYPE_3RD_AUDIO) {
+    if (need_fade_out_) {
+      LOG_INFO("### AVOID POP NOISE ###");
+      fadeOut();
+      need_fade_out_ = false;
+    }
+    ret = pipeline_->Play();
+
+    if ( (Conf::GetFeatures(SUPPORT_HARDWAREVOL)) &&
+        ((media_type_str_.compare("genie") == 0) || (media_type_str_.compare("melon") == 0) ||
+         (media_type_str_.compare("qq_music") == 0) || (media_type_str_.compare("kaola_fm") == 0) ||
+         (media_type_str_.compare("podbbang") == 0) || (media_type_str_.compare("vibe") == 0) ||
+         (media_type_str_.compare("tencent_funaudio") == 0) ||
+         (media_type_str_.compare("tencent_mini_app_audio") == 0) ||
+         (media_type_str_.compare("welaaa_audio_streaming") == 0) ||
+         (media_type_str_.compare("genesis_audio_streaming") == 0))) {
+      if (need_fade_in_ == true) {
+        fadeIn(2000); // 2000ms
+        need_fade_in_ = false;
+      } else {
+        fadeIn(); // 100ms
+      }
+    } else {
+      fadeIn();
+    }
+
+    return ret;
+  }
+
+  ret = pipeline_->Play();
+  if ( (Conf::GetFeatures(SUPPORT_HARDWAREVOL)) &&
+        ((media_type_str_.compare("audio") == 0) || (media_type_str_.compare("video") == 0)) ){
+    if (need_fade_in_ == true) {
+      fadeIn(800); // 800ms
+      need_fade_in_ = false;
+    } else {
+      fadeIn(); // 100ms
+    }
+  } else {
+    fadeIn(); // 100ms
+
+  }
+  return ret;
+}
+
+------------------------------------>>
+HandleAutoplugSort :
+
+GValueArray* VideoPipeline::HandleAutoplugSort(GstElement *bin,GstPad *pad,GstCaps *caps,
+                                               GValueArray *factories, gpointer data) {
+  GstStructure* caps_str = nullptr;
+  const gchar* name_str = nullptr;
+  if (caps) {
+    caps_str = gst_caps_get_structure(caps, 0);
+    name_str = gst_structure_get_name(caps_str);
+    LOG_DEBUG("cap name - %s\n", name_str);
+    if (g_strrstr(name_str, "video") ||
+        g_strrstr(name_str, "x-3gp") ||
+        g_strrstr(name_str, "vnd.rn-realmedia") ||
+        (Conf::GetFeatures(SUPPORT_MJPEG) && g_strrstr(name_str, "image/jpeg"))) {
+      LOG_INFO("count - %d \n", video_count_);
+      if (video_count_ == 0) {
+        check_playback_timer_->Stop(); // Re-setting playback timer
+        TimerCallback playback_callback = std::bind(&VideoPipeline::CheckPlayback, this);
+        check_playback_timer_->AddCallback(playback_callback, 3200);
+        check_playback_timer_->Start();
+
+        loading_timer_->Start();
+      }
+      video_count_++;
+    }
+  }
+
+  return nullptr;
+}
+
+--------------------------------->
+
+-->> HandleElementAdd
+
+gboolean VideoPipeline::HandleElementAdd(GstBin* bin, GstElement *element, gpointer data) {
+  gchar *element_name = gst_element_get_name(element);
+
+  if (!element_name)
+    return true;
+  LOG_INFO("%s\n", element_name);
+  if (nullptr != g_strrstr (element_name, "uridecodebin")) {
+    ElementAddCallback elementadd_callback = std::bind(&VideoPipeline::HandleUriDecodeBinElementAdd, this,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2,
+                                                       std::placeholders::_3);
+    gst_media_->RegisterUriDecodeBinElementAddBin(elementadd_callback, element);
+    
+    AutoPlugSortCallback autoplugsort_callback = std::bind(&VideoPipeline::HandleAutoplugSort, this,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2,
+                                                       std::placeholders::_3,
+                                                       std::placeholders::_4,
+                                                       std::placeholders::_5);
+    gst_media_->RegisterAutoPlugSort(autoplugsort_callback, element);
+    AutoPlugSelectCallback autoplugselect_callback = std::bind(&VideoPipeline::HandleAutoplugSelect, this,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2,
+                                                       std::placeholders::_3,
+                                                       std::placeholders::_4,
+                                                       std::placeholders::_5);
+    gst_media_->RegisterAutoPlugSelect(autoplugselect_callback, element);
+    TimerCallback playback_callback = std::bind(&VideoPipeline::CheckPlayback, this);
+
+    int interval = (pb_info_.is_mtp_)? 50000 : 1800;
+    LOG_INFO("timeout interval-%d", interval);
+    check_playback_timer_->AddCallback(playback_callback, interval);
+    check_playback_timer_->Start();
+
+    NoMorePadsCallback nomorepads_callback = std::bind(&VideoPipeline::HandleNoMorePads, this,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2);
+    gst_media_->RegisterNoMorePads(nomorepads_callback, element);
+    TimerCallback loading_callback = std::bind(&VideoPipeline::CheckShowLoading, this);
+    loading_timer_->AddCallback(loading_callback, 2000);
+
+  }
+
+  g_free(element_name);
+  return true;
+}
+
+--------------------------------------------------------->>
+
+-->> RegisterAutoPlugSort :
+
+bool GstMedia::RegisterAutoPlugSort(AutoPlugSortCallback callback, GstElement* element) {
+  if (uridecodebin_sort_signal_id_ > 0) {
+    return true;
+  }
+  bool ret = false;
+  gchar *element_name = gst_element_get_name(element);
+  autoplugsort_callback_ = callback;
+  uridecodebin_ = element;
+  uridecodebin_sort_signal_id_ = g_signal_connect(gst_bin_get_by_name(GST_BIN(pipeline_), element_name),
+                                                  "autoplug-sort",
+                                                  G_CALLBACK(AutoSortPlugCallbackFunc),
+                                                  static_cast<void*>(this));
+  if (uridecodebin_sort_signal_id_ > 0) {
+    ret = true;
+  }
+  g_free(element_name);
+  return ret;
+}
+
+------------------------------------------------->>
+
+HandlePlaySinkElementAdd :
+
+gboolean VideoPipeline::HandlePlaySinkElementAdd(GstBin* bin, GstElement *element, gpointer data) {
+  gchar *element_name = gst_element_get_name(element);
+
+  if (!element_name)
+    return true;
+  LOG_INFO("%s\n", element_name);
+  if (nullptr != g_strrstr (element_name, "vbin")) {
+    GstElement *conv, *scale;
+    GstCaps *caps;
+    GstElement *vconv =  gst_bin_get_by_name(GST_BIN(element), "vconv");
+    if(!vconv) {
+      LOG_ERROR("playsink vconv not exist");
+      return true;
+    }
+    conv = gst_bin_get_by_name(GST_BIN(vconv), "conv");
+    if(!conv) {
+      LOG_ERROR("playsink videoconvert not exist");
+      return true;
+    }
+    scale = gst_bin_get_by_name(GST_BIN(vconv), "scale");
+    if(!scale) {
+      LOG_ERROR("playsink videoscale not exist");
+      return true;
+    }
+    video_balance_ = gst_bin_get_by_name(GST_BIN(vconv), "videobalance");
+    if(!video_balance_) {
+      LOG_ERROR("playsink videobalance not exist");
+      return true;
+    }
+    SetVideoBrightness(video_info_.brightness_);
+    SetVideoContrast(video_info_.contrast_);
+    SetVideoSaturation(video_info_.saturation_);
+    
+    gst_element_unlink(conv, scale);
+    caps = gst_caps_new_simple("video/x-raw",
+      //"chroma-site", G_TYPE_STRING, "mpeg2",
+      "name", G_TYPE_STRING, "vbcaps",
+      NULL);
+    if(!gst_element_link_filtered(conv, scale, caps)) {
+      LOG_ERROR("Caps Linking Failed!!");
+    }
+    gst_object_unref(G_OBJECT(video_balance_));
+    gst_object_unref(G_OBJECT(conv));
+    gst_object_unref(G_OBJECT(scale));
+    gst_object_unref(G_OBJECT(caps));
+    gst_object_unref(G_OBJECT(vconv));
+  }
+  g_free(element_name);
+  return true;
+}
+
+-------------------------------------------------------------------------->
+
+--> HandleUriDecodeBinElementAdd 
+
+gboolean VideoPipeline::HandleUriDecodeBinElementAdd(GstBin* bin, GstElement *element, gpointer data) {
+  gchar *element_name = gst_element_get_name(element);
+  if (!element_name)
+    return true;
+
+  LOG_INFO("%s", element_name);
+
+  if (nullptr != g_strrstr (element_name, "decodebin")) {
+    ElementAddCallback elementadd_callback = std::bind(&VideoPipeline::HandleDecodeBinElementAdd, this,
+                                                       std::placeholders::_1,
+                                                       std::placeholders::_2,
+                                                       std::placeholders::_3);
+    gst_media_->RegisterDecodeBinElementAddBin(elementadd_callback, element);
+  }
+
+  g_free(element_name);
+
+  return true;
+}
+
+--------------------------------------------------------------------------------->
+
+-->> HandleDecodeBinElementAdd :
+
+gboolean VideoPipeline::HandleDecodeBinElementAdd(GstBin* bin, GstElement *element, gpointer data) {
+  gchar *element_name = gst_element_get_name(element);
+  if (!element_name)
+    return true;
+  LOG_INFO("%s", element_name);
+
+  if (!no_audio_mode_ && ((nullptr != g_strrstr (element_name, "ocdtsdecoder")) ||
+      (nullptr != g_strrstr (element_name, "ocac3decoder")))) {
+    gst_media_->SetProperty<gint>(element, "output-channels", audio_channel_);
+    LOG_INFO("AC3 or DTS element, output-channels[%d]", audio_channel_);
+  } else if (!no_audio_mode_ && (nullptr != g_strrstr (element_name, "dlbac3dec"))) {
+    if (audio_channel_ < 6) {
+      gst_media_->SetProperty<gboolean>(element, "out-2ch-downmix", true);
+    }
+    LOG_INFO("LG dlbdec, output-channels[%d]", audio_channel_);
+  } else if (!no_audio_mode_ && ((nullptr != g_strrstr (element_name, "dlbparse")) ||
+             (nullptr != g_strrstr (element_name, "dlbac3parse")))) {
+    NotifyAtmosCallback notify_atmos_callback = std::bind(&VideoPipeline::HandleNotifyAtmos, this,
+                                                          std::placeholders::_1,
+                                                          std::placeholders::_2,
+                                                          std::placeholders::_3,
+                                                          std::placeholders::_4);
+    gst_media_->RegisterHandleNotifyAtmos(notify_atmos_callback);
+    LOG_INFO("LG dlbparse, Atmos notify registered");
+    use_atmos_ = true;
+  }
+
+  g_free(element_name);
+  return true;
+}
+
+----------------------------------------------------------------------------------------------->>
+
+-->> HandleBusChangeState :
+
+void VideoPipeline::HandleBusChangeState(GstMessage* message) {
+  GstState old_state = GST_STATE_NULL;
+  GstState new_state = GST_STATE_NULL;
+  gst_message_parse_state_changed(message, &old_state, &new_state, NULL);
+  LOG_INFO("[BUS] GST_MESSAGE_STATE_CHANGED [%s -> %s]", gst_element_state_get_name(old_state),
+                                                         gst_element_state_get_name(new_state));
+  if (old_state == new_state)
+    return;
+
+  switch (new_state) {
+    case GST_STATE_NULL: //FALL-THROUGH
+    case GST_STATE_READY:
+      pb_info_.playback_started = false;
+      pb_info_.is_playing_ = false;
+      break;
+    case GST_STATE_PAUSED:
+      pb_info_.is_playing_ = false;
+      if (pb_info_.is_external_paused_) {
+        event_->NotifyEventPlaybackStatus(STATE_PAUSED);
+        pb_info_.is_external_paused_ = false;
+      }
+      break;
+    case GST_STATE_PLAYING:
+      if (!pb_info_.playback_started) {
+        position_timer_->Start();
+        event_->NotifyEventPlaybackStatus(STATE_PLAYING);
+        pb_info_.playback_started = true;
+      } else if (!pb_info_.is_playing_) {
+        event_->NotifyEventPlaybackStatus(STATE_PLAYING);
+      } else {
+      }
+      pb_info_.is_playing_ = true;
+      break;
+    default:
+      break;
+  }
+}
+
+----------------------------------------------------------------------------------------------->>
+
+-->> HandleBusEOS :
+
+void VideoPipeline::HandleBusEOS() {
+  LOG_INFO("[BUS] GST_MESSAGE_EOS");
+  if (!pb_info_.is_load_completed_) {
+    LOG_ERROR("load is not finished, but EOS is called. Abnormal case. Ignore");
+    return;
+  }
+  if (pb_info_.playback_rate_ < 0 ) {
+    pb_info_.is_bos_ = true;
+    event_->NotifyEventBOS();
+    return;
+  }
+
+  if (pb_info_.mode == PLAYBACK_REPEAT_GAPLESS) {
+    LOG_INFO("EOS, but gapless mode - seek to 0");
+    if (gst_media_->SeekSimple(0ll)) {
+      pb_info_.current_position_ = 0;
+    }
+    return;
+  }
+
+  pb_info_.is_eos_ = true;
+  event_->NotifyEventEOS();
+  //event_->NotifyEventPlaybackStatus(STATE_DONE);
+}
