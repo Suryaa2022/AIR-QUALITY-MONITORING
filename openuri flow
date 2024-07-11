@@ -1,0 +1,727 @@
+
+-> PlayerStub
+
+void PlayerStubImpl::openUri(const std::shared_ptr<CommonAPI::ClientId> _client,
+                             std::string _uri, uint32_t _channels, MM::PlayerTypes::MediaType _type, openUriReply_t _reply) {
+    MMLogInfo("load contents.. channels=[%u]", _channels);
+    int mediaId = 0;
+    int retCnt = 10;
+    std::string connectionName;
+    MM::PlayerTypes::MediaType currentType = _type; // GENSIX-71219 : prevent timing issue
+    if (currentType == MM::PlayerTypes::MediaType::AUDIO) { // Local USB audio
+        mediaId = default_media_id;
+        checkValidMediaId();
+        connectionName = playerenginemanager_->getDefaultConnectionName();
+        if(!connectionName.empty() && default_media_id > 0) {
+            MMLogInfo("connection name = %s received for default", connectionName.c_str());
+            player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+            playerenginemanager_->printMap();
+        } else {
+            MMLogInfo("Invalid connection name(null) received for default - restoring connection[%d]", default_media_id);
+            if (default_media_id <= 0) {
+                playerenginemanager_->createPlayerEngine();
+                default_media_id = playerenginemanager_->getPID();
+                connectionName = playerenginemanager_->getConnectionName();
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(default_media_id, connectionName)) {
+                    MMLogInfo("Duplicated connection name is detected.. retry getConnection");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                }
+
+                if (default_media_id <= 0 || connectionName.empty()) {
+                    MMLogError("Fail to restore");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                mediaId = default_media_id;
+                player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+                playerenginemanager_->printMap();
+            } else {
+                MMLogError("Engine is restored by main.cpp, but not started yet");
+                max_pe_instance_++;
+                do {
+                    retCnt--;
+                    usleep(20 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                    if (!connectionName.empty() && playerenginemanager_->checkValidConnectionName(default_media_id, connectionName)) {
+                        player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+                        playerenginemanager_->printMap();
+                        break;
+                    }
+                } while (retCnt > 0);
+            }
+        }
+    } else {
+        if (map_media_id_.find(currentType) == map_media_id_.end()) {
+            MMLogInfo("New type is requested... need to check. type=[%d]", static_cast<int32_t>(currentType));
+            map_media_id_[currentType] = 0;
+        }
+        MMLogInfo("Creating PE for multi instance, type=[%d], saved_id=[%u], pe_cnt=[%d]",
+                  static_cast<int32_t>(currentType), map_media_id_[currentType], max_pe_instance_);
+        checkValidMediaId();
+
+        if (map_media_id_[currentType] > 0) {
+            mediaId = map_media_id_[currentType];
+            if ((playerenginemanager_->getConnectionName(mediaId)).empty()) {
+                MMLogInfo("There is no connection name in map. id=[%d]", mediaId);
+                connectionName = playerenginemanager_->getConnectionName();
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogWarn("Fail to get valid ConnectionName.. Try again..");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                }
+                if (retCnt > 0) {
+                    playerenginemanager_->insertMediaId(mediaId, connectionName);
+                } else {
+                    MMLogError("Fail to get connection name.");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+            }
+        } else {
+            if (max_pe_instance_ <= MAX_PLAYER_ENGINE_INSTANCE) {
+                max_pe_instance_++;
+                playerenginemanager_->createPlayerEngine();
+                mediaId = playerenginemanager_->getPID();
+                map_media_id_[currentType] = mediaId;
+
+                connectionName = playerenginemanager_->getConnectionName();
+                retCnt = 20; // Timeout 2s -> 4s
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogInfo("Duplicated connection name is detected.. retry getConnection");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                }
+
+                if (retCnt == 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogWarn("Fail to get ConnectionName.. player-engine is not started yet.");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                if (mediaId <= 0 || connectionName.empty()) {
+                    MMLogInfo("Invalid values received for map: connection name = %s media ID = %d", connectionName.c_str(), mediaId);
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                playerenginemanager_->insertMediaId(mediaId, connectionName);
+                MMLogInfo("Pass the connection name=[%s / %d] to playerprovider", connectionName.c_str(), mediaId);
+            } else {
+                MMLogError("Max number of PE already created...");
+                _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+               return;
+            }
+        }
+        playerenginemanager_->printMap();
+        connectionName = playerenginemanager_->getConnectionName(mediaId);
+    }
+    MMLogInfo("Create openUri command=[%s / %d] to playerprovider", connectionName.c_str(), mediaId);
+
+
+    command::BaseCommand* command = new (std::nothrow) command::OpenUriCommand(player_, 0, _uri, _type, true, (playerenginemanager_->connectionMap), mediaId, _channels, connectionName, _reply);
+    if (!command) {
+        MMLogError("failed to allocate for OpenUriCommand");
+    } else {
+        command->from_hmi = true;
+        command_queue_->Post(command);
+    }
+}
+
+
+=====================================================================================
+
+command_queue.cpp
+
+
+void Queue::PostFront(BaseCommand* bc) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    PostNoGurad(bc, true);
+}
+
+void Queue::Post(BaseCommand* bc) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    PostNoGurad(bc, false);
+}
+
+void Queue::PostIf(BaseCommand* bc, const std::function<bool(void)>& fn) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    if (!fn())
+        return;
+
+    PostNoGurad(bc, false);
+}
+
+=======================================================================================
+
+commands.h
+
+
+/**
+* @class lge::mm::command::OpenUriCommand
+* @brief This is used for handling openUri CommonAPI.
+* @see lge::mm::command::BaseCommand
+*/
+struct OpenUriCommand : public BaseCommand {
+    DECLARE_COMMAND_RECEIVER(OpenUriCommand)
+
+    MM::PlayerTypes::Track track;
+    MM::PlayerTypes::MediaType media_type;
+    bool show_preroll_frame;
+    bool provide_global_clock;
+    uint64_t pos_us;
+    uint32_t media_id = 0;
+    uint32_t channel_num = 0;
+    std::map<int, std::string> connectionMap;
+    MM::PlayerStub::openUriReply_t reply;
+    MM::PlayerTypes::PlayerError e = MM::PlayerTypes::PlayerError::NO_ERROR;
+
+  /**
+  * @fn OpenUriCommand
+  * @brief Constructor.
+  * @section function_none Function Flow : None
+  * @param[in] _receiver : command receiver.
+  * @param[in] _index : index of the media track in the playlist.
+  * @param[in] _uri : uri of the media content.
+  * @param[in] _reply : callback for completion of the CommonAPI call.
+  * @section global_variable_none Global Variables : None
+  * @section dependencies_none Dependencies : None
+  * @return : None
+  */
+    OpenUriCommand(Receiver* _receiver,
+            uint32_t _index,
+            const std::string& _uri,
+            MM::PlayerTypes::MediaType _media_type,
+            bool _provide_clock,
+            std::map<int, std::string> &_connectionMap,
+            uint32_t _media_id,
+            uint32_t _channel,
+            std::string _connectionName,
+            MM::PlayerStub::openUriReply_t _reply)
+    : BaseCommand(CommandType::OpenUri, _connectionName),
+      receiver(_receiver),
+      track(_index, _uri, _media_id, false),
+      media_type(_media_type),
+      show_preroll_frame(true),
+      provide_global_clock(_provide_clock),
+      pos_us(0),
+      media_id(_media_id),
+      channel_num(_channel),
+      connectionMap(_connectionMap),
+      reply(_reply) {}
+
+  /**
+  * @fn ~OpenUriCommand
+  * @brief Destructor.
+  * @section function Function Flow
+  * - Invokes completion callback, if registered.
+  *
+  * @param : None
+  * @section global_variable_none Global Variables : None
+  * @section dependencies_none Dependencies : None
+  * @return : None
+  */
+    virtual ~OpenUriCommand() {
+        if (reply) {
+            reply(e, media_id);
+        }
+    }
+};
+
+====================================================================================================
+
+Event_system.cpp
+
+void EventSystem::HandleEvent(Coro::pull_type& in) {
+    MMLogInfo("Coro is ready to receive event");
+
+    BaseCommand* command = nullptr;
+    EventAndParam eap;
+
+    while(1) {
+        in();
+        eap = in.get();
+
+        if (command == nullptr && eap.first == EventType::CommandArrived) {
+            command = command_queue_->Pop();
+            if (command == nullptr)
+                continue;
+
+            if(command->type == CommandType::QuitThread){
+                delete command;
+                GlibHelper::Disconnect(this->src_id_);
+                MMLogInfo("QuitThread command is received");
+                break;
+            } else {
+                command->Execute(in);
+            }
+
+            delete command;
+            command = nullptr;
+
+            if (command_queue_->Size())
+                InformCommandArrived();
+        } else {
+            // ignore other commands, if command is not being processed.
+        }
+    }
+
+    thread_sema_.notify();
+    MMLogInfo("Coro thread is finished");
+}
+
+GMainContext* EventSystem::GetGMainContext() {
+    return gmain_context_;
+}
+
+void EventSystem::InformCommandArrived() {
+    char data = 0;
+    write(pipe_[1], &data, 1);
+}
+
+
+========================================================================
+
+command_queue.cpp
+
+
+BaseCommand* Queue::Pop() {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+    BaseCommand* bc = nullptr;
+
+    if (queue_.empty())
+        return bc;
+
+    bc = queue_.front();
+    queue_.pop_front();
+
+    return bc;
+}
+
+==========================================================================
+
+
+PlayerProvider.cpp
+
+
+
+bool PlayerProvider::process(command::Coro::pull_type& in, command::OpenUriCommand* command) {
+    uint32_t index = command->track.getIndex();
+    std::string uri = command->track.getUri();
+    bool is_dsd = false;
+    //bool skip_wait = false;
+    MM::PlayerTypes::MediaType current_media_type = command->media_type;
+    media_type_ = current_media_type;
+
+    if (last_fail_media_id_ > 0 && last_fail_media_id_ == (int)command->media_id) {
+        MMLogError("[OpenUriCommand] Already destroyed PE - skip command");
+        command->e = MM::PlayerTypes::PlayerError::BACKEND_UNREACHABLE;
+        return false;
+    }
+    std::string connectionName = command->connectionName;
+    connection_map_ = command->connectionMap;
+    if (current_media_type == MM::PlayerTypes::MediaType::AUDIO || current_media_type == MM::PlayerTypes::MediaType::VIDEO ||
+        current_media_type == MM::PlayerTypes::MediaType::USB_AUDIO1 || current_media_type == MM::PlayerTypes::MediaType::USB_VIDEO1 ||
+        current_media_type == MM::PlayerTypes::MediaType::USB_AUDIO2 || current_media_type == MM::PlayerTypes::MediaType::USB_VIDEO2 ||
+        current_media_type == MM::PlayerTypes::MediaType::MOOD_THERAPY_AUDIO ||
+        current_media_type == MM::PlayerTypes::MediaType::MOOD_THERAPY_VIDEO ||
+        current_media_type == MM::PlayerTypes::MediaType::RECORDING_PLAY) {
+        single_connection_name_ = connectionName;
+    }
+    int proxyId = preparePEProxy(connectionName, true);
+    if (proxyId <= -1) {
+        MMLogInfo("Invalid Proxy Id");
+        return false;
+    }
+#if 0
+    static std::vector<command::CommandType> cv = { command::CommandType::Stop };
+    if (command_queue_->Exist(cv, command->connectionName) && IsStreamingType(current_media_type)) {
+        MMLogInfo("[OpenUriCommand] " "skip wait event for processing stop early.");
+        //skip_wait = true;
+    }
+#endif
+    MMLogInfo("[OpenUriCommand] " "index: %d, uri: %s, pos_us: %llu, channel: %u", index , uri.c_str(), command->pos_us, command->channel_num);
+    if ((uri.rfind(".dff") != std::string::npos) || (uri.rfind(".dsf") != std::string::npos)) { // To Do: XXX
+        is_dsd = true;
+    }
+#if 0
+    // set this track to be loaded
+    if (command->from_hmi) {
+        if (stub->getRepeatOptionAttribute().getStatus() == MM::PlayerTypes::RepeatStatus::REPEAT_DIRECTORY) {
+            std::string directory;
+            std::string filename;
+            playlist::ParseUtils::ParseUri(uri, directory, filename);
+            playlist_mgr_->SelectDirectory(directory);
+        }
+        playlist::Track t(index, uri, "");
+        boost::optional<playlist::Track> track = playlist_mgr_->SelectTrack(t);
+
+        uri_last_open_ = uri;
+        if (!track) {
+            MMLogWarn("[OpenUriCommand] " "selected track is not in playlist");
+            is_need_new_index_ = true;
+        } else {
+            // update index when do openUri with uri. INVALID_INDEX -> index or 0.
+            MMLogInfo("[OpenTrackCommand] " "selected track index is updated[%u]", (*track).index());
+            command->track.setIndex((*track).index());
+            is_need_new_index_ = false;
+        }
+    } else {
+        is_need_new_index_ = false; // Default value, already has own index.
+        uri_last_open_.clear();
+    }
+#endif
+    need_to_open_when_play_[proxyId] = false;
+    int32_t Idx = getCurrentTrackAttrIdx(connectionName);
+    if (Idx < stub->getCurrentTrackAttribute().size() && Idx != -1) {
+        track_opened_.erase(track_opened_.begin()+Idx);
+        track_opened_.insert(track_opened_.begin()+Idx, command->track);
+    } else {
+        track_opened_.push_back(command->track);
+    }
+    stub->setCurrentTrackAttribute(track_opened_);
+
+    Idx = getCurrentTrackAttrIdx(connectionName);
+    if (Idx > -1)
+        sc_notifier_.NotifyCurrentTrack(track_opened_[Idx], getMediaID(connectionName));
+    std::vector<MM::PlayerTypes::Position> pos_list = stub->getPositionAttribute();
+    Idx = getPositionAttrIdx(connectionName);
+    if (Idx <= -1) {
+        MM::PlayerTypes::Position pos_t(command->pos_us, getMediaID(connectionName), true);
+        pos_list.push_back(pos_t);
+        /* Now the index will be the last element */
+        Idx = pos_list.size() - 1;
+    } else {
+        pos_list[Idx].setMedia_id(getMediaID(connectionName));
+        pos_list[Idx].setPosition(command->pos_us);
+    }
+    for (auto itr = pos_list.begin(); itr != pos_list.end(); itr++) {
+        if ((itr - pos_list.begin()) != Idx) {
+            itr->setActive(false);
+        } else {
+            if (Idx != (pos_list.size() - 1)) // For ignoring sending 0 position
+                itr->setActive(true);
+            else
+                itr->setActive(false);
+        }
+    }
+    stub->setPositionAttribute(pos_list);
+
+    // set_uri option : json string
+    boost::property_tree::ptree tree;
+    boost::property_tree::ptree sub_tree;
+    std::stringstream ss;
+    std::string mediatype = MediaTypeToString(current_media_type);
+    bool cache = IsCacheNeeded(current_media_type);
+
+    if (mediatype.size() > 0)
+        sub_tree.put("mediatype", mediatype);
+    if (mediatype.compare("video") == 0) { //store B/S/C data for USB Video case only
+        if (fabs(saturation_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("saturation", saturation_);
+        if (fabs(brightness_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("brightness", brightness_);
+        if (fabs(contrast_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("contrast", contrast_);
+    } else if (mediatype.compare("video_2nd") == 0) { //store B/S/C data for USB Video2nd case only
+        if (fabs(saturation_2nd_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("saturation", saturation_2nd_);
+        if (fabs(brightness_2nd_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("brightness", brightness_2nd_);
+        if (fabs(contrast_2nd_ - 0xdeadbeef) > DBL_EPSILON)
+            sub_tree.put("contrast", contrast_2nd_);
+    }
+    if (current_media_type == MM::PlayerTypes::MediaType::STREAM)
+        addRecorderOption(sub_tree);
+
+    sub_tree.put("cache", cache);
+    sub_tree.put("show-preroll-frame", command->show_preroll_frame);
+    sub_tree.put("provide-global-clock", command->provide_global_clock);
+    sub_tree.put("is-dsd", is_dsd);
+    /*
+    if ((multi_channel_media_id_ != getMediaID(connectionName)) &&(multi_channel_media_id_ > 0)) {
+        MMLogWarn("[%d] already occupied multi channel alsa. Try to open 2ch alsa slot", multi_channel_media_id_);
+        command->channel_num = 2;
+    }*/
+    sub_tree.put("channel", command->channel_num);
+
+    getSubtitlePath(uri, current_media_type, sub_tree);
+    if (current_media_type == MM::PlayerTypes::MediaType::GOLF_VIDEO) {
+        MMLogInfo("get cached golf video path..");
+        sendDbusCaching(Caching::GetCachedMovie, uri);
+    }
+
+    audio_slot_num_6ch_ = "_";
+    audio_slot_num_2ch_ = "_";
+    audio_slot_num_ = "_";
+    if (uri.length() > 2 && uri[0] == '<' && uri[2] == '>') { // ccRC project needs this logic
+      MMLogInfo("6ch_slot=[%c]", uri[1]);
+      sub_tree.put("6ch_slot", uri[1]);
+      audio_slot_num_6ch_ = "6ch_";
+      audio_slot_num_6ch_.push_back(uri[1]);
+      uri.erase(0, 3);
+    }
+    if (uri.length() > 2 && uri[0] == '[' && uri[2] == ']') {
+      MMLogInfo("2ch_slot=[%c]", uri[1]);
+      sub_tree.put("2ch_slot", uri[1]);
+      audio_slot_num_2ch_ = "2ch_";
+      audio_slot_num_2ch_.push_back(uri[1]);
+      uri.erase(0, 3);
+    }
+
+    tree.add_child("Option", sub_tree);
+    boost::property_tree::json_parser::write_json(ss, tree, false);
+
+    GError *dbus_error = NULL;
+    GError *error = NULL;
+#ifdef PLATFORM_CCIC 
+//ccIC의 경우 6ch은 무조건 0번 슬롯을 사용하기때문에 2ch slot 정보만 보내고 있음.
+    audio_slot_num_6ch_ = "6ch_0";
+    gint result_channel = 0;
+    MMLogInfo("call getChannelInfo in sync");
+    com_lge_player_engine_call_get_channel_info_sync(
+        playerengine_proxy_[proxyId],
+        uri.c_str(),
+        ss.str().c_str(),
+        &result_channel,
+        NULL,
+        &dbus_error
+    );
+    MMLogInfo("get result from getChannelInfo in sync");
+    if (dbus_error) {
+        command->e = MM::PlayerTypes::PlayerError::BACKEND_UNREACHABLE;
+        MMLogError("GError found - [%s]", dbus_error->message);
+        g_error_free(dbus_error);
+        state_[proxyId] = State::Stopped;
+
+        return false;
+    }
+
+    audio_slot_num_ = result_channel > 5 ? audio_slot_num_6ch_ : result_channel > 0 ? audio_slot_num_2ch_ : "_";
+    if(audio_slot_num_[0] == '_') {
+        MMLogError("Failed to get slot");
+    } else if (result_channel > 5){
+        MMLogInfo("if 6ch slot is being used, it will be downmixed");
+        auto pe_audio_slot_iter = pe_audio_slot_map_.find(audio_slot_num_);
+        if(pe_audio_slot_iter != pe_audio_slot_map_.end()) {
+            if(pe_audio_slot_iter->second != connectionName) {
+                MMLogInfo("Force downmix 6ch to 2ch");
+                command::SwitchChannelCommand sc(this, pe_audio_slot_iter->second, true, nullptr);
+                sc.Execute(in);
+            }
+        }
+    } else {
+        auto pe_audio_slot_iter = pe_audio_slot_map_.find(audio_slot_num_);
+        if(pe_audio_slot_iter != pe_audio_slot_map_.end()) {
+            if(pe_audio_slot_iter->second != connectionName) {
+                int slot_proxyId = preparePEProxy(pe_audio_slot_iter->second, false);
+                if (slot_proxyId <= -1) {
+                    MMLogInfo("there is no pe proxy Id for audio slot %s", audio_slot_num_.c_str());
+                } else {
+                    command::StopCommand sc(this, false, pe_audio_slot_iter->second, getMediaID(pe_audio_slot_iter->second), nullptr);
+                    sc.Execute(in);
+                }
+            }
+        }
+    }
+#endif
+    // async call
+    com_lge_player_engine_call_set_uri(
+        playerengine_proxy_[proxyId],
+        uri.c_str(),
+        ss.str().c_str(),
+        NULL,
+        (GAsyncReadyCallback)PlayerProvider::callAsyncCallback,
+        (gpointer*)new std::pair<PlayerProvider*, command::BaseCommand*>(this, command)
+    );
+
+
+================================================================
+
+
+Here's a detailed explanation of the process method in PlayerProvider that handles a PlayCommand:
+
+Method signature
+
+bool PlayerProvider::process(command::Coro::pull_type& in, command::PlayCommand* command)
+
+Purpose
+
+This method processes a PlayCommand received from the coroutine thread. It checks the command's validity, prepares the player engine proxy, and initiates playback if possible.
+
+Step-by-step explanation
+
+Skip commands:
+
+A static vector cv is defined, containing a single element command::CommandType::Play. This is used to check if there are any pending commands of the same type for the same connection.
+The method checks if there are any pending commands in the command_queue_ that match the PlayCommand type and the connection name. If so, it skips processing the current command and returns true.
+
+Prepare player engine proxy:
+The method calls preparePEProxy to prepare a player engine proxy for the given connection name. If the proxy ID is invalid (<= -1), it logs an error and returns false.
+
+Check if URI needs to be opened:
+This section is currently commented out ( #if 0 ). If it were enabled, it would check if the track needs to be opened when playing. If so, it would:
+Seek to the first track in the playlist using playlist_mgr_->SeekTrack(0).
+Get the track's URI and index.
+Create an OpenUriCommand object to open the URI.
+Execute the OpenUriCommand using the in coroutine object. If the execution fails, it would set the error code and return false.
+
+Check if playback is blocked:
+The method checks if playback is blocked using the blockPlayback() function. If so, it logs a message and returns true, skipping the playback.
+
+Reset playback blocked flag:
+The playback_blocked_ flag is reset to false.
+
+Call player engine's play method:
+The method calls the com_lge_player_engine_call_play_sync function to initiate playback using the prepared player engine proxy.
+The succeed variable is set to TRUE if the playback is successful.
+If an error occurs, the dbus_error variable is set, and the error code is stored in the command->e variable.
+
+Update playback state:
+If playback is successful, the is_playing_ flag is set to true, and the state_ array is updated to reflect the playing state for the given proxy ID.
+
+Return result:
+The method returns the result of the playback operation, which is true if successful and false otherwise.
+
+Notes
+
+The preparePEProxy function is not shown in this code snippet, but it's responsible for preparing a player engine proxy for the given connection name.
+The blockPlayback() function is not shown, but it's likely responsible for checking if playback is blocked due to some condition.
+The playlist_mgr_ object is not shown, but it's likely responsible for managing the playlist and providing track information.
+The command_queue_ object is not shown, but it's likely responsible for managing the queue of pending commands.
+
+=================================================================================================
+
+MediaPlayer.cpp
+
+
+
+bool MediaPlayer::SetURI(const std::string& uri, int media_type) {
+  MediaPlayerInit();
+  SetURIInternal(uri, media_type);
+  return pipeline_->Load(uri);
+}
+
+
+
+bool MediaPlayer::SetURI(const std::string& uri, const std::string& option) {
+  MediaPlayerInit();
+  using boost::property_tree::ptree;
+
+  bool need_convert = false; // need audioconvert or ccRC 5.1ch 2nd slot
+  bool duration_check = false;
+  char slot_6ch = '0';
+  char slot = '0';
+  int channel = 0;
+  int media_type = TYPE_UNSUPPORTED;
+  double exec_time = 0;
+  AVCodecID codec_id = AVCodecID::AV_CODEC_ID_NONE;
+
+  ptree tree;
+  std::string media_type_str;
+  std::stringstream stream(option);
+  try {
+    boost::property_tree::read_json(stream, tree);
+  } catch (const boost::property_tree::ptree_error& exception) {
+    LOG_INFO("Invalid JSON Format - %s", exception.what());
+    return false;
+  }
+
+  auto iter = tree.begin();
+  ptree info = iter->second;
+  if (info.get_optional<std::string>("mediatype")) {
+    media_type_str = info.get<std::string>("mediatype");
+    auto iteration = kMediaType.find(media_type_str);
+    if (iteration != kMediaType.end()) {
+      media_type = iteration->second;
+      media_type_str_ = media_type_str;
+      if (audio_controller_)
+        audio_controller_->setMediaType(media_type_str);
+    } else {
+      LOG_WARN("unknown media type=[%s]", media_type_str.c_str());
+    }
+  } else {
+    LOG_WARN("there is no media type..");
+  }
+
+  if (info.get_optional<std::string>("channel")) {
+    channel = std::stoi(info.get<std::string>("channel"));
+    LOG_INFO("#### Received channel = [%d]", channel);
+  }
+  if (info.get_optional<char>("2ch_slot")) {
+    slot = info.get<char>("2ch_slot");
+    LOG_INFO("#### Received 2ch_slot = [%c]", slot);
+  }
+  if (info.get_optional<char>("6ch_slot")) {
+    slot_6ch = info.get<char>("6ch_slot");
+    LOG_INFO("#### Received 6ch_slot = [%c]", slot_6ch);
+    need_convert = (slot_6ch == '1') ? true : false;
+  }
+
+  // KAKAO_I
+  if ((media_type_str.compare("kakao_i") == 0) || (media_type_str.compare("kakao_i2") == 0)
+       || (media_type_str.compare("kakao_i3") == 0)) {
+    if (std::string::npos != uri.find("file://")) {
+      LOG_INFO("kakao_i plays local file");
+      media_type = TYPE_AUDIO;
+    } else if (std::string::npos != uri.find(".m3u8")) {
+      LOG_INFO("kakao_i plays HLS contents");
+      media_type = TYPE_3RD_AUDIO;
+    }
+  // Kidscare
+  } else if (media_type_str.compare("kids_video") == 0) {
+    if (std::string::npos != uri.find(".mp3")) {
+      LOG_INFO("kids_video, but plays audio format file");
+      media_type = TYPE_AUDIO;
+    } else if (std::string::npos != uri.find(".m3u")) {
+      LOG_INFO("kids_video, but plays audio playlist file");
+      media_type = TYPE_AUDIO;
+    }
+  // DVRS front&rear
+  } else if (media_type == TYPE_DVRS) {
+    LOG_INFO("dvrs media, use static pipeline - but need to check audio track");
+    duration_check = false;
+    channel = 0;
+    if (audio_controller_) {
+      channel = audio_controller_->getAudioChannel(uri, slot, channel, &need_convert, &codec_id, &exec_time);
+    }
+  // Other media
+  } else {
+    if (std::string::npos != uri.find("file://")) {
+      duration_check = true;
+    }
+    if (audio_controller_) {
+      channel = audio_controller_->getAudioChannel(uri, slot, channel, &need_convert, &codec_id, &exec_time);
+    }
+  }
+
+  if (!need_fade_out_) {
+    fadeOut((int)(100L - exec_time));
+  } else {
+    fadeOut(100L);
+  }
+  need_fade_out_ = false;
+  need_fade_in_ = true;
+
+  LOG_INFO("media type[%d][%s], channel=[%d], slot=[%c]", media_type, media_type_str_.c_str(), channel, slot);
+  SetURIInternal(uri, media_type);
+
+  if (audio_controller_ && duration_check) {
+      pipeline_->SetAudioDuration(audio_controller_->getAudioDuration(uri));
+  }
+
+  if ((media_type_str.compare("kakao_i") != 0) && (media_type_str.compare("kakao_i2") != 0)
+      && (media_type_str.compare("kakao_i3") != 0)) { // kakao_i doesn't have next/prev usecase
+    TimerCallback start_callback = std::bind(&MediaPlayer::updateTimerFlag, this);
+    start_timer_->AddCallback(start_callback, 1000);
+    start_timer_->Start();
+  }
+
+  return pipeline_->Load(uri, option, channel, need_convert, slot);
+}
+
+================================================================================================================================
