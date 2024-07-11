@@ -1,0 +1,1292 @@
+
+
+HResult HMediaPlayer::Impl::setMediaType(HMediaPlayerType type)
+{
+    PlayerTypes::MediaType media_type;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+
+    switch(type){
+        case HMediaPlayerType::AUDIO_LOCAL_USBMUSIC:
+            media_type = PlayerTypes::MediaType::AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_USBVIDEO:
+            media_type = PlayerTypes::MediaType::VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND:
+            media_type = PlayerTypes::MediaType::NATURE_SOUND;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAOLAFM:
+            media_type = PlayerTypes::MediaType::KAOLAFM;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_MELON:
+            media_type = PlayerTypes::MediaType::MELON;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_QQMUSIC:
+            media_type = PlayerTypes::MediaType::QQMUSIC;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI:
+            media_type = PlayerTypes::MediaType::KAKAOI;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENIE:
+            media_type = PlayerTypes::MediaType::GENIE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_XIMALAYA:
+            media_type = PlayerTypes::MediaType::XIMALAYA;
+            break;
+        case HMediaPlayerType::VIDEO_MOVING_PICTURE_MANUAL:
+            media_type = PlayerTypes::MediaType::MANUAL_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING:
+            media_type = PlayerTypes::MediaType::GOLF_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_KIDS_CARE_MODE:
+            media_type = PlayerTypes::MediaType::KIDS_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_RECORDING_PLAY:
+            media_type = PlayerTypes::MediaType::RECORDING_PLAY;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_PODBBANG:
+            media_type = PlayerTypes::MediaType::PODBBANG;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_FRONT:
+            media_type = PlayerTypes::MediaType::DVRS_FRONT;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_REAR:
+            media_type = PlayerTypes::MediaType::DVRS_REAR;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI2:
+            media_type = PlayerTypes::MediaType::KAKAOI2;
+            break;
+        case HMediaPlayerType::AUDIO_FACE_DETECTION:
+            media_type = PlayerTypes::MediaType::FACE_DETECTION;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_VIBE:
+            media_type = PlayerTypes::MediaType::VIBE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_AIQUTING:
+            media_type = PlayerTypes::MediaType::TENCENT_FUNAUDIO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_WELAAA:
+            media_type = PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI3:
+            media_type = PlayerTypes::MediaType::KAKAOI3;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENESIS_MUSIC:
+            media_type = PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING;
+            break;
+        default:
+            return HResult::INVALID;
+    }
+
+    if(Adaptor->setMediaType(getHandle(),media_type)){
+        return HResult::OK;
+    }
+
+    return HResult::ERROR;
+}
+
+HResult HMediaPlayer::Impl::setURL(const std::string& url)
+{
+    HResult ret = HResult::OK;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+    //this->url = url;
+    if(Adaptor->setURL(getHandle(),url)){
+
+    }else {
+        ret = HResult::ERROR;
+    }
+    return ret;
+}
+
+HResult HMediaPlayer::Impl::load(bool needDownmix)
+{
+    HResult ret = HResult::INVALID;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+    int32_t result = 0;
+
+    result = Adaptor->load(getHandle(), true /* Audio focus */, needDownmix);
+
+    if(result == -1){
+        ret = HResult::ERROR;
+    } else if (result == -2) {
+        ret = HResult::CONNECTION_FAIL;
+    } else {
+        ret = HResult::OK;
+    }
+
+    return ret;
+}
+
+HResult HMediaPlayer::Impl::switchChannel(bool useDownmix)
+{
+    HResult ret = HResult::OK;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+
+    bool result = true;
+
+    result = Adaptor->switchChannel(getHandle(), useDownmix);
+
+    if(!result){
+        ret = HResult::ERROR;
+    } else {
+        ret = HResult::OK;
+    }
+
+    return ret;
+}
+
+HResult HMediaPlayer::Impl::play()
+{
+    HResult ret = HResult::OK;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+
+    if(Adaptor->play(getHandle())){
+
+    }
+    else {
+        ret = HResult::ERROR;
+    }
+    return ret;
+}
+
+
+
+
+/*
+ * Return -1 : HResult::ERROR
+ * Return -2 : HResult::CONNECTION_FAIL (APN FAiled)
+ * Return 0  : HResult::OK
+ */
+
+int32_t PlayerEngineCCOSAdaptor::load(uint64_t handle, bool use_audio_focus, bool needDownmix) {
+    std::function<void(const CommonAPI::CallStatus&, uint64_t rhandle, const PlayerTypes::PlayerError&)> callback;
+
+    PlayerTypes::PlayerError error;
+    CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::INVALID_VALUE;
+    CommonAPI::CallInfo callInfo(2000);
+
+    GError *gError = NULL;
+    GVariant *ret = NULL;
+
+    PlayerEngineAdaptationInfo info;
+
+    std::string str_url = "";
+    std::string str_url_with_slot = "";
+
+    bool needRetry = false;
+    bool isAPNChanged = false;
+    int32_t audio_channel = 0;
+    uint32_t media_id = 0;
+    uint32_t player_type = 0;
+
+    if (getAdaptationInfoFromInfoMap(handle, info) == true) {
+        str_url = str_url_with_slot = info.url;
+        player_type = info.player_type;
+
+       
+--> MediaType : video
+
+
+	 if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO)) {
+            //audio_channel = getReadCntByDatabase(str_url);
+            m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+            m_logger->i("{}) {}:{} : UHD({})", TAG, __FUNCTION__, __LINE__, getPlayNgByDatabase(str_url));
+        } else if ((player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_VIDEO)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::RECORDING_PLAY)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::FACE_DETECTION)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::DVRS_REAR))) {
+            // MOOD_THERAPY_VIDEO and GOLF_VIDEO doesn't use audio source
+            use_audio_focus = false;
+            if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO)) {
+                m_logger->i("{}) {}:{} : enable APN", TAG, __FUNCTION__, __LINE__, handle);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+            }
+        } 
+
+--> Audio
+
+
+	else if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MELON) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GENIE) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::XIMALAYA) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::PODBBANG) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_FUNAUDIO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIBE)) {
+            if (str_url.compare(0, 3, "(1)") == 0) { // APN change to default CCS
+                m_logger->i("{}) {}:{} : default APN", TAG, __FUNCTION__, __LINE__, handle);
+                str_url = str_url.substr(3);
+                str_url_with_slot = str_url;
+                setAPNDefaultStatusToInfoMap(handle, true);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+                //update info.url by removing (1)
+                setUrlToInfoMap(handle, str_url);
+            } else { // To enable APN change
+                m_logger->i("{}) {}:{} : enable APN", TAG, __FUNCTION__, __LINE__, handle);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+            }
+
+            if (str_url.compare(0, 3, "(A)") == 0) { // To check Atmos streaming
+                m_logger->i("{}) {}:{} : Atmos streaming", TAG, __FUNCTION__, __LINE__, handle);
+                str_url = str_url.substr(3);
+                str_url_with_slot = str_url;
+                audio_channel = 6;
+                //update info.url by removing (A)
+                setUrlToInfoMap(handle, str_url);
+            }
+
+            if ((player_type == static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM) ||
+                 (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC)) )) {
+                setPlayerStatusToInfoMap(handle, ccos::media::HMediaPlayingState::UNINIT);
+            }
+        } else {
+            // None
+            m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+        }         
+
+        // Set Audio Channel after checking whether the multi channel is supported or not.
+        if (!isMultiChannel || needDownmix) {
+            audio_channel = 2;
+        } else {
+            if (audio_channel > 0) {
+                // Do nothing
+            } else if ( player_type == static_cast<uint32_t>(PlayerTypes::MediaType::AUDIO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MANUAL_VIDEO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_AUDIO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::NATURE_SOUND) ) {
+                audio_channel = 0;
+            } else {
+                audio_channel = 2;
+            }
+        }
+
+        if ((mConnection != NULL) && use_audio_focus) {
+            int32_t retry = 3;
+            int16_t audio_ret = 0;
+            int16_t audio_slot = -1;
+            uint16_t audio_src_id = 0;
+            std::string volumeType = "";
+
+            volumeType = getVolumeTypeAndSrcId(player_type, &audio_src_id);
+            if (volumeType.size() == 0 && audio_src_id == 0) {
+                m_logger->e("{}) {}:{} : getVolumeTypeAndSrcId fail - type=[{}]",
+                            TAG, __FUNCTION__, __LINE__, player_type);
+                return -1;
+            }
+
+            do {
+                ret = g_dbus_connection_call_sync(mConnection, AM_SERVICE_NAME, AM_OBJECT_PATH, AM_INTERFACE_NAME,
+                                                  AM_REQ_GETSLOTAVAILABLE,
+                                                  g_variant_new ("(qq)", audio_src_id, 0x01), // 0x01 2ch TDM table
+                                                  G_VARIANT_TYPE_TUPLE,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &gError);
+                if (gError) {
+                    m_logger->e("{}) {}:{} : Error getting available slot", TAG, __FUNCTION__, __LINE__);
+                    g_error_free(gError);
+                    return -1;
+                }
+                if (ret) {
+                    g_variant_get(ret, "(nn)", &audio_ret, &audio_slot);
+                    m_logger->i("{}) {}:{} : ret=[{}], Available slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_ret, audio_slot);
+
+                    if ( audio_ret == 8 || (audio_slot < 0 || audio_slot > 0x09) ) {
+                        m_logger->e("{}) {}:{} : Error invalid slot~!!! ####", TAG, __FUNCTION__, __LINE__);
+                        retry--;
+                    } else {
+                        retry = 0;
+                        setAudioSlotToInfoMap(handle, audio_slot);
+                        std::string slotString = std::to_string(audio_slot);
+                        std::string slotBrace = "[]";
+
+                        slotBrace.insert(1, slotString);
+                        str_url_with_slot.insert(0, slotBrace);
+
+                        if (volumeType.size() > 1) {
+                            volumeType.replace(volumeType.size()-1, 1, slotString);
+                        }
+                    }
+                    g_variant_unref(ret);
+                    ret = NULL;
+                }
+            } while (retry > 0);
+
+            // audio_ret == 8(NON_EXISTENT)
+            if (audio_ret == 8 || audio_slot == -1) {
+                return -1;
+            }
+
+            if (isMultiChannel && (audio_channel != 2)) { // check 5.1ch slot available or not
+                ret = g_dbus_connection_call_sync(mConnection, AM_SERVICE_NAME, AM_OBJECT_PATH, AM_INTERFACE_NAME,
+                                                  AM_REQ_GETSLOTAVAILABLE,
+                                                  g_variant_new ("(qq)", audio_src_id, 0x02), // 0x02 5.1ch table
+                                                  G_VARIANT_TYPE_TUPLE,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &gError);
+                if (gError) {
+                    m_logger->e("{}) {}:{} : Error getting 5.1ch available slot", TAG, __FUNCTION__, __LINE__);
+                    g_error_free(gError);
+                    return -1;
+                }
+                if (ret) {
+                    g_variant_get(ret, "(nn)", &audio_ret, &audio_slot);
+                    m_logger->i("{}) {}:{} : ret=[{}], 5.1ch available slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_ret, audio_slot);
+
+                    if ( audio_ret == 8 || audio_slot < 0 ) {
+#ifndef USE_DOWNMIX
+                        m_logger->i("{}) {}:{} : 5.1ch slot is not available, use 2ch mode", TAG, __FUNCTION__, __LINE__);
+                        audio_channel = 2;
+#else
+                        m_logger->i("{}) {}:{} : 5.1ch slot is not available, but keep channel", TAG, __FUNCTION__, __LINE__);
+#endif
+                    }
+                    g_variant_unref(ret);
+                    ret = NULL;
+                } else {
+                    m_logger->e("{}) {}:{} : failed to get 5.1ch slot info", TAG, __FUNCTION__, __LINE__);
+                }
+            }
+        }
+    } else { // No-element
+        return -1;
+    }
+
+    if (isProxyConnectionAvailable()) {
+        PlayerTypes::MediaType media_type;
+
+        switch(player_type) {
+            case static_cast<uint32_t>(PlayerTypes::MediaType::AUDIO):
+                media_type = PlayerTypes::MediaType::AUDIO;
+                callInfo.timeout_ = 2500;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO):
+                media_type = PlayerTypes::MediaType::VIDEO;
+                break;
+
+        m_logger->i("{}:{} Setting media_type [{}]", __FUNCTION__, __LINE__, static_cast<uint32_t>(media_type));
+        if (setMediaType(handle, media_type) == true) {
+            playerProxy->openUri(str_url_with_slot, audio_channel, media_type, callStatus, error, media_id, &callInfo);
+            if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+                needRetry = true;
+            }
+
+            if (needRetry || media_id < 10) {
+                int retry = PLAYER_PROXY_CONNECT_RETRY_COUNT_SIMPLE;
+                do {
+                    m_logger->i("{}:{} Invalid media_id [{}], get by media type again", __FUNCTION__, __LINE__, media_id);
+                    usleep(10*PLAYER_PROXY_CONNECT_INTERVAL);
+                    playerProxy->getMediaIdByMediaType(media_type, callStatus, error, media_id);
+                    retry--;
+                } while (retry > 0 && media_id < 10);
+
+                needRetry = (retry <= 0) ? true : false;
+
+                if (needRetry) {
+                    /* To-do: Recovery code review */
+                    m_logger->e("{}) {}:{} : Command API dbus error, try force kill[{}] and retry", TAG, __FUNCTION__, __LINE__, media_id);
+                    playerProxy->stop(media_id, true, callStatus, error, &callInfo);
+                    playerProxy->openUri(str_url_with_slot, audio_channel, media_type, callStatus, error, media_id, &callInfo);
+                }
+            }
+        } else {
+            m_logger->e("{}) {}:{} : Failed to set media type",TAG, __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        /* Remove the map, if already exits */
+        (void)deleteHandleFromMediaIDMap(handle);
+        if (createHandleToMediaIDMap(handle, media_id, true) != true) {
+            m_logger->e("{}) {}:{} : Failed to create  type",TAG, __FUNCTION__, __LINE__);
+            return -1;
+        }
+    } else {
+        m_logger->e("{}) {}:{} : Command API connection error",TAG, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(condLoadLock);
+    isLoadFinished = true;
+    condLoadWait.notify_all();
+    return 0;
+}
+
+
+
+bool PlayerEngineCCOSAdaptor::play(uint64_t handle) {
+1285     PlayerTypes::PlayerError error;
+1286     CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::INVALID_VALUE;
+1287     CommonAPI::CallInfo callInfo(1000);
+1288     PlayerEngineAdaptationInfo info;
+1289     uint32_t media_id = 0;
+1290
+1291     if (getAdaptationInfoFromInfoMap(handle, info) == true) {
+1292         if (getMediaIDFromMediaIDMap(handle, media_id) == true) {
+1293             if(isProxyConnectionAvailable()){
+1294                 this->playerProxy->play(media_id, callStatus, error, &callInfo);
+1295                 isLastNoResponse = false;
+1296                 return true;
+1297             } else {
+1298                 m_logger->e("{}) {}:{} : Command API connection error", TAG, __FUNCTION__, __LINE__);
+1299                 return false;
+1300             }
+1301         }
+1302     }
+1303
+1304     return false;
+1305 }
+
+=========================================================================================================================
+
+HMediaPlayer.cpp
+
+
+HUInt64 HMediaPlayer::Impl::getHandle(){
+253     PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+254
+255     uint64_t handle;
+256
+257     handle = Adaptor->getHandle(m_handle);
+258
+259     if(m_handle != handle)
+260         m_handle = handle;
+261
+262     return static_cast<HUInt64>(handle);
+263 }
+
+
+ HResult HMediaPlayer::Impl::play()
+434 {
+435     HResult ret = HResult::OK;
+436     PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+437
+438     if(Adaptor->play(getHandle())){
+439
+440     }
+441     else {
+442         ret = HResult::ERROR;
+443     }
+444     return ret;
+445 }
+
+
+
+ HResult HMediaPlayer::play()
+575 {
+576     Impl *Player = this->m_pImpl.get();
+577
+578     if(Player != NULL){
+579         return Player->play();
+580     }
+581     return HResult::ERROR;
+582 }
+583
+584 HResult HMediaPlayer::playASync()
+585 {
+586     try {
+587         std::thread pThread([&]() {play();});
+588         pThread.detach();
+589     } catch (const std::runtime_error& exception) {
+590         return HResult::ERROR;
+591     }
+592
+593     return HResult::OK;
+594 }
+
+=============================================================
+
+PlayerStub.cpp
+
+
+ void PlayerStubImpl::play(const std::shared_ptr<CommonAPI::ClientId> _client, uint32_t _mediaId, playReply_t _reply) {
+300     MMLogInfo("media id = %d", _mediaId);
+301     std::string connectionName = playerenginemanager_->getConnectionName(_mediaId);
+302     MMLogInfo("connectionName = %s", connectionName.c_str());
+303     command::BaseCommand* command = new (std::nothrow) command::PlayCommand(player_, connectionName, _reply);
+304     if (!command)
+305         MMLogError("failed to allocate for PlayCommand");
+306     else
+307         command_queue_->Post(command);
+308 }
+
+==========================================================
+
+Command_queue.cpp
+
+
+BaseCommand* Queue::Pop() {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+    BaseCommand* bc = nullptr;
+
+    if (queue_.empty())
+        return bc;
+
+    bc = queue_.front();
+    queue_.pop_front();
+
+    return bc;
+}
+
+
+void Queue::PostNoGurad(BaseCommand* bc, bool to_front) {
+    if (to_front == true)
+        queue_.push_front(bc);
+    else
+        queue_.push_back(bc);
+
+    if (callback_ && queue_.size() == 1)
+        callback_();
+}
+
+void Queue::PostFront(BaseCommand* bc) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    PostNoGurad(bc, true);
+}
+
+void Queue::Post(BaseCommand* bc) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    PostNoGurad(bc, false);
+}
+
+void Queue::PostIf(BaseCommand* bc, const std::function<bool(void)>& fn) {
+    std::lock_guard<std::recursive_mutex> locker(mutex_);
+
+    if (!fn())
+        return;
+
+    PostNoGurad(bc, false);
+}
+
+
+
+--> event_system.cpp
+
+=====================================================
+
+commands.cpp
+
+
+/**
+* @class lge::mm::command::PlayCommand
+* @brief This is used for handling play CommonAPI.
+* @see lge::mm::command::BaseCommand,
+*/
+struct PlayCommand : public BaseCommand {
+  DECLARE_COMMAND_RECEIVER(PlayCommand)
+  MM::PlayerStub::playReply_t reply;
+  MM::PlayerTypes::PlayerError e = MM::PlayerTypes::PlayerError::NO_ERROR;
+
+  /**
+  * @fn PlayCommand
+  * @brief Constructor.
+  * @section function_none Function Flow : None
+  * @param[in] _receiver : command receiver.
+  * @param[in] _reply : callback for completion of the CommonAPI call.
+  * @section global_variable_none Global Variables : None
+  * @section dependencies_none Dependencies : None
+  * @return : None
+  */
+  PlayCommand(Receiver* _receiver,
+              std::string _connectionName,
+              MM::PlayerStub::playReply_t _reply)
+    : BaseCommand(CommandType::Play, _connectionName),
+      receiver(_receiver),
+      reply(_reply) {}
+
+  /**
+  * @fn ~PlayCommand
+  * @brief Destructor.
+  * @section function Function Flow
+  * - Invokes completion callback, if registered.
+  *
+  * @param : None
+  * @section global_variable_none Global Variables : None
+  * @section dependencies_none Dependencies : None
+  * @return : None
+  */
+  virtual ~PlayCommand() {
+    if (reply) {
+      reply(e);
+    }
+  }
+};
+
+====================================================
+
+void PlayerProvider::PEDestroyed(int destroy_mid) {
+ 117     MMLogInfo("id=[%d]", destroy_mid);
+ 118     last_fail_media_id_ = destroy_mid;
+ 119
+ 120     GlibHelper::CallAsync(event_system_.GetGMainContext(), [this]() -> gboolean {
+ 121         MMLogError("PEDestroyed Callback[%d]", last_fail_media_id_);
+ 122         event_system_.SetEvent(command::EventType::ErrorOccured, nullptr);
+ 123
+ 124         ptree pt;
+ 125         pt.put("ErrorCode", ERROR_GST_INTERNAL_ERROR);
+ 126         if (last_fail_media_id_ > 0)
+ 127             onPEDestroyed(pt, last_fail_media_id_);
+ 128         return FALSE;
+ 129     });
+ 130 }
+ 131
+
+----------------------------------------------------
+
+
+Process PlayCommand
+
+bool PlayerProvider::process(command::Coro::pull_type& in, command::PlayCommand* command) {
+    // skip commands
+    static std::vector<command::CommandType> cv = { command::CommandType::Play };
+    std::string connectionName = command->connectionName;
+
+    if (command_queue_->Exist(cv, connectionName)) {
+        MMLogInfo("[PlayCommand] " "skip command");
+        return true;
+    }
+
+    int proxyId = preparePEProxy(connectionName);
+    if (proxyId <= -1) {
+        MMLogInfo("Invalid Proxy Id");
+        return false;
+    }
+#if 0
+    // check if it is needed to open uri.
+    if (need_to_open_when_play_[proxyId]) {
+        MMLogInfo("[PlayCommand] " "track is changed or stopped");
+
+        boost::optional<playlist::Track> track = playlist_mgr_->SeekTrack(0);
+        if (!track) {
+            MMLogWarn("[PlayCommand] " "invalid track");
+            return false;
+        }
+
+        uint32_t index = (*track).index();
+        std::string uri = (*track).GetInfo(playlist::Track::InfoType::Uri);
+
+        is_playing_ = true;
+        command::OpenUriCommand ouc(this, index, uri, true, connection_map_, getMediaID(connectionName), 0, connectionName, nullptr);
+        if (ouc.Execute(in) == false) {
+            command->e = ouc.e;
+            return false;
+        }
+    } else if (state_[proxyId] == State::Stopped) {
+        MMLogInfo("[PlayCommand] " "Stopped. skip command");
+        return true;
+    }
+#endif
+    MMLogInfo("[PlayCommand] " "");
+
+    // block playback if needed.
+    if (blockPlayback()) {
+        MMLogInfo("[PlayCommand] " "blockPlayback(), so skip");
+        return true;
+    }
+
+    playback_blocked_ = false;
+
+    GError *dbus_error = NULL;
+    gboolean succeed = FALSE;
+    com_lge_player_engine_call_play_sync(
+        playerengine_proxy_[proxyId],
+        &succeed,
+        NULL,
+        &dbus_error
+    );
+
+    if (dbus_error) {
+        command->e = MM::PlayerTypes::PlayerError::BACKEND_UNREACHABLE;
+        g_error_free(dbus_error);
+    }
+
+    if (succeed == TRUE) {
+        is_playing_ = true;
+        state_[proxyId] = State::Playing;
+    }
+    return succeed;
+}
+
+============================================================================
+
+dbus_player_interface.c
+
+/**
+ * com_lge_player_engine_call_play:
+ * @proxy: A #ComLgePlayerEngineProxy.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback to call when the request is satisfied or %NULL.
+ * @user_data: User data to pass to @callback.
+ *
+ * Asynchronously invokes the <link linkend="gdbus-method-com-lge-PlayerEngine.Play">Play()</link> D-Bus method on @proxy.
+ * When the operation is finished, @callback will be invoked in the <link linkend="g-main-context-push-thread-default">thread-default main loop</link> of the thread you are calling this method from.
+ * You can then call com_lge_player_engine_call_play_finish() to get the result of the operation.
+ *
+ * See com_lge_player_engine_call_play_sync() for the synchronous, blocking version of this method.
+ */
+void
+com_lge_player_engine_call_play (
+    ComLgePlayerEngine *proxy,
+    GCancellable *cancellable,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  g_dbus_proxy_call (G_DBUS_PROXY (proxy),
+    "Play",
+    g_variant_new ("()"),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    cancellable,
+    callback,
+    user_data);
+}
+
+
+/**
+ * com_lge_player_engine_call_play_finish:
+ * @proxy: A #ComLgePlayerEngineProxy.
+ * @out_result: (out): Return location for return parameter or %NULL to ignore.
+ * @res: The #GAsyncResult obtained from the #GAsyncReadyCallback passed to com_lge_player_engine_call_play().
+ * @error: Return location for error or %NULL.
+ *
+ * Finishes an operation started with com_lge_player_engine_call_play().
+ *
+ * Returns: (skip): %TRUE if the call succeded, %FALSE if @error is set.
+ */
+gboolean
+com_lge_player_engine_call_play_finish (
+    ComLgePlayerEngine *proxy,
+    gboolean *out_result,
+    GAsyncResult *res,
+    GError **error)
+{
+  GVariant *_ret;
+  _ret = g_dbus_proxy_call_finish (G_DBUS_PROXY (proxy), res, error);
+  if (_ret == NULL)
+    goto _out;
+  g_variant_get (_ret,
+                 "(b)",
+                 out_result);
+  g_variant_unref (_ret);
+_out:
+  return _ret != NULL;
+}
+
+
+
+/**
+ * com_lge_player_engine_call_play_sync:
+ * @proxy: A #ComLgePlayerEngineProxy.
+ * @out_result: (out): Return location for return parameter or %NULL to ignore.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @error: Return location for error or %NULL.
+ *
+ * Synchronously invokes the <link linkend="gdbus-method-com-lge-PlayerEngine.Play">Play()</link> D-Bus method on @proxy. The calling thread is blocked until a reply is received.
+ *
+ * See com_lge_player_engine_call_play() for the asynchronous version of this method.
+ *
+ * Returns: (skip): %TRUE if the call succeded, %FALSE if @error is set.
+ */
+gboolean
+com_lge_player_engine_call_play_sync (
+    ComLgePlayerEngine *proxy,
+    gboolean *out_result,
+    GCancellable *cancellable,
+    GError **error)
+{
+  GVariant *_ret;
+  _ret = g_dbus_proxy_call_sync (G_DBUS_PROXY (proxy),
+    "Play",
+    g_variant_new ("()"),
+    G_DBUS_CALL_FLAGS_NONE,
+    -1,
+    cancellable,
+    error);
+  if (_ret == NULL)
+    goto _out;
+  g_variant_get (_ret,
+                 "(b)",
+                 out_result);
+  g_variant_unref (_ret);
+_out:
+  return _ret != NULL;
+}
+
+
+===========================
+
+Mediaplayer.cpp
+
+bool MediaPlayer::Play() {
+  bool ret = false;
+  MediaPlayerInit();
+
+  if (media_type_ == TYPE_3RD_AUDIO) {
+    if (need_fade_out_) {
+      LOG_INFO("### AVOID POP NOISE ###");
+      fadeOut();
+      need_fade_out_ = false;
+    }
+    ret = pipeline_->Play();
+
+    if ( (Conf::GetFeatures(SUPPORT_HARDWAREVOL)) &&
+        ((media_type_str_.compare("genie") == 0) || (media_type_str_.compare("melon") == 0) ||
+         (media_type_str_.compare("qq_music") == 0) || (media_type_str_.compare("kaola_fm") == 0) ||
+         (media_type_str_.compare("podbbang") == 0) || (media_type_str_.compare("vibe") == 0) ||
+         (media_type_str_.compare("tencent_funaudio") == 0) ||
+         (media_type_str_.compare("tencent_mini_app_audio") == 0) ||
+         (media_type_str_.compare("welaaa_audio_streaming") == 0) ||
+         (media_type_str_.compare("genesis_audio_streaming") == 0))) {
+      if (need_fade_in_ == true) {
+        fadeIn(2000); // 2000ms
+        need_fade_in_ = false;
+      } else {
+        fadeIn(); // 100ms
+      }
+    } else {
+      fadeIn();
+    }
+
+    return ret;
+  }
+
+  ret = pipeline_->Play();
+  if ( (Conf::GetFeatures(SUPPORT_HARDWAREVOL)) &&
+        ((media_type_str_.compare("audio") == 0) || (media_type_str_.compare("video") == 0)) ){
+    if (need_fade_in_ == true) {
+      fadeIn(800); // 800ms
+      need_fade_in_ = false;
+    } else {
+      fadeIn(); // 100ms
+    }
+  } else {
+    fadeIn(); // 100ms
+
+  }
+  return ret;
+}
+
+=========================================================
+
+Creator.cpp
+
+
+Pipeline* PipelineCreator::CreatePipeline(int& media_type, const std::string& uri) {
+  error_reason_ = ERROR_NONE;
+  media_type_ = media_type;
+
+  int ret_media_type = ParsePipelineType(uri);
+  media_type = ret_media_type;
+
+  if (ret_media_type == TYPE_AUDIO) {
+    return new AudioPipeline();
+  } else if (ret_media_type == TYPE_STREAMING) {
+    return new StreamingPipeline();
+  } else if (ret_media_type == TYPE_3RD_AUDIO) {
+    LOG_INFO("Going to create a pipeline for VisualOn pipeline");
+    return new VisualOnPipeline();
+  } else if (ret_media_type == TYPE_VIDEO) {
+    return new VideoPipeline();
+  } else if (ret_media_type == TYPE_THUMBNAIL) {
+    return new ThumbnailPipeline();
+  } else if (ret_media_type == TYPE_UNSUPPORTED) {
+    return new NullPipeline();
+#ifdef PLATFORM_BROXTON
+  } else if (ret_media_type == TYPE_DVD) {
+    return new DvdPipeline();
+#endif
+  } else if (ret_media_type == TYPE_TRANSCODE) {
+    LOG_:NFO("TranscodePipeline");
+    return new TranscodePipeline();
+  } else if (ret_media_type == TYPE_DVRS) {
+    return new DVRSPipeline();
+  } else {
+    return new NullPipeline();
+  }
+}
+
+================================================
+
+
+
+This is a C++ method named play in the PlayerEngineCCOSAdaptor class. It takes a single parameter:
+
+handle: a uint64_t value representing a handle to a media item
+The method returns a bool value indicating whether the play operation was successful.
+
+Here's a step-by-step breakdown of the method:
+
+Initialization
+
+The method initializes several local variables:
+
+error: a PlayerTypes::PlayerError object to store error information
+callStatus: a CommonAPI::CallStatus object initialized with INVALID_VALUE
+callInfo: a CommonAPI::CallInfo object initialized with a timeout value of 1000
+info: a PlayerEngineAdaptationInfo object to store adaptation information
+media_id: a uint32_t value to store the media ID
+
+
+Get adaptation information
+
+The method checks if the getAdaptationInfoFromInfoMap function returns true when called with the handle and info arguments. If this condition is true, it means that the adaptation information for the given handle is available.
+
+Get media ID
+
+The method then checks if the getMediaIDFromMediaIDMap function returns true when called with the handle and media_id arguments. If this condition is true, it means that the media ID for the given handle is available.
+
+Check proxy connection
+
+The method checks if the proxy connection is available by calling the isProxyConnectionAvailable function. If the connection is available, it proceeds to play the media item.
+
+Play media item
+
+The method calls the play method on the playerProxy object, passing the media_id, callStatus, error, and callInfo arguments. This method is responsible for playing the media item.
+
+Set last no response flag
+
+The method sets the isLastNoResponse flag to false, indicating that a response was received from the proxy.
+
+Return success
+
+The method returns true to indicate that the play operation was successful.
+
+Error handling
+
+If any of the above conditions fail, the method logs an error message and returns false to indicate that the play operation failed.
+
+Here are some additional notes on the code:
+
+The getAdaptationInfoFromInfoMap and getMediaIDFromMediaIDMap functions are likely used to retrieve adaptation information and media IDs from internal maps or databases.
+The isProxyConnectionAvailable function is used to check if the proxy connection is available and ready to receive commands.
+The playerProxy object is likely a proxy object that communicates with a media player or audio engine to play the media item.
+The callInfo object is used to store timeout information for the play method call.
+The error object is used to store error information in case the play method call fails.
+Overall, this method is responsible for playing a media item using a proxy connection and handling errors that may occur during the playback process
+
+==========================================================================================================================
+
+
+This is a C++ code that implements a media player using a proxy adaptor. I'll break down the code into smaller sections and explain each part in detail.
+
+getHandle() method
+
+This method is part of the HMediaPlayer::Impl class and returns a handle to a media item.
+
+Line 253: Gets an instance of the PlayerEngineCCOSAdaptor class, which is a singleton.
+Line 257: Calls the getHandle method on the adaptor, passing m_handle as an argument, and stores the result in the handle variable.
+Line 259: Checks if the m_handle variable is different from the newly obtained handle. If they are different, updates m_handle with the new value.
+Line 262: Returns the handle value as a HUInt64 type.
+play() method (Impl class)
+
+This method is part of the HMediaPlayer::Impl class and plays a media item.
+
+Line 434: Initializes a HResult variable ret to HResult::OK.
+Line 436: Gets an instance of the PlayerEngineCCOSAdaptor class, which is a singleton.
+Line 438: Calls the play method on the adaptor, passing the result of getHandle() as an argument. If the play method returns true, the media item is played successfully.
+Line 441: If the play method returns false, sets the ret variable to HResult::ERROR.
+Line 444: Returns the ret value.
+play() method (HMediaPlayer class)
+
+This method is part of the HMediaPlayer class and plays a media item.
+
+Line 575: Gets an instance of the Impl class using the m_pImpl pointer.
+Line 578: Checks if the Impl instance is not null.
+Line 579: Calls the play method on the Impl instance and returns the result.
+Line 581: If the Impl instance is null, returns HResult::ERROR.
+playASync() method
+
+This method is part of the HMediaPlayer class and plays a media item asynchronously.
+
+Line 585: Creates a new thread using a lambda function that calls the play method.
+Line 588: Detaches the thread, allowing it to run independently.
+Line 590: Catches any std::runtime_error exceptions that may occur during thread creation and returns HResult::ERROR.
+Line 593: Returns HResult::OK if the thread is created successfully.
+Class relationships
+
+The code defines three classes:
+
+HMediaPlayer: The main media player class that provides a public interface for playing media items.
+HMediaPlayer::Impl: An implementation class that contains the actual logic for playing media items.
+PlayerEngineCCOSAdaptor: A proxy adaptor class that communicates with a media engine or player to play media items.
+The HMediaPlayer class uses the Impl class to delegate the playback logic, and the Impl class uses the PlayerEngineCCOSAdaptor class to communicate with the media engine or player.
+
+Overall, this code provides a media player implementation that uses a proxy adaptor to play media items. The play method is implemented synchronously and asynchronously using a separate thread.
+
+=======================================================================================================================================
+
+
+
+          +---------------+
+          |  PlayerStub  |
+          +---------------+
+                  |
+                  | Create command
+                  | Post command to CommandQueue
+                  v
+          +---------------+
+          |  CommandQueue  |
+          +---------------+
+                  |
+                  | Add command to queue
+                  v
+          +---------------+
+          |  EventSystem  |
+          +---------------+
+                  |
+                  | Create event
+                  | Notify coroutine thread
+                  v
+          +---------------+
+          |  Coroutine Thread  |
+          +---------------+
+                  |
+                  | Wait for event
+                  | Get event and parameter
+                  v
+          +---------------+
+          |  EventSystem  |
+          +---------------+
+                  |
+                  | Pop command from queue
+                  | Process command
+                  | Delete command
+                  v
+          +---------------+
+          |  End          |
+          +---------------+
+
+PlayerStub :
+
+Create a command:
+
+The PlayerStub class creates a BaseCommand object, such as a PlayCommand or StopCommand.
+The command is initialized with the necessary parameters, such as the connection name and callback function.
+
+Post the command:
+
+The PlayerStub class posts the command to the CommandQueue using the PostCommand method.
+
+CommandQueue
+
+Add command to queue:
+
+The CommandQueue class adds the posted command to its internal queue.
+The queue is a First-In-First-Out (FIFO) data structure, where commands are added to the end and removed from the front.
+
+
+EventSystem
+
+Create an event:
+
+The EventSystem class creates an Event object, which represents a notification that a command has arrived.
+The event is initialized with the EventType::CommandArrived type and a pointer to the CommandQueue.
+
+Notify the coroutine:
+
+The EventSystem class notifies the coroutine thread that an event has arrived using the GlibHelper::Notify method.
+The coroutine thread is waiting for events using the Coro::pull_type object.
+
+Coroutine Thread
+
+Wait for event:
+The coroutine thread waits for an event to arrive using the in() function.
+
+Get event and parameter:
+When an event arrives, the coroutine thread retrieves the event type and parameter using in.get().
+
+Handle event:
+The coroutine thread calls the HandleEvent method of the EventSystem class, passing the event type and parameter.
+
+EventSystem (continued)
+
+Pop command from queue:
+The HandleEvent method pops the front command from the CommandQueue using the Pop method.
+
+Process command:
+The HandleEvent method processes the command based on its type, such as executing a PlayCommand or StopCommand.
+
+Delete command:
+After processing the command, it's deleted to free up memory.
+
+============================================================================================================================
+
+Step 1: PlayerStub receives a PlayCommand
+
+The PlayerStub receives a PlayCommand from the coroutine thread.
+The PlayerStub creates a PlayCommand object and passes it to the PlayerProvider instance.
+
+Step 2: PlayerProvider processes the PlayCommand
+
+The PlayerProvider instance receives the PlayCommand object and calls the process method.
+The process method checks if the command is valid and prepares the player engine proxy using the preparePEProxy method.
+If the proxy ID is valid, the method checks if playback is blocked using the blockPlayback method. If blocked, it returns true.
+If not blocked, the method calls the com_lge_player_engine_call_play_sync function to initiate playback using the prepared player engine proxy.
+
+Step 3: com_lge_player_engine_call_play_sync calls the D-Bus interface
+
+The com_lge_player_engine_call_play_sync function calls the com_lge_player_engine_call_play function, which is an asynchronous method call to the Play() method on the ComLgePlayerEngine proxy object.
+The com_lge_player_engine_call_play function uses the g_dbus_proxy_call function to send the method call to the D-Bus interface.
+The g_dbus_proxy_call function sends the method call to the D-Bus daemon, which forwards the call to the ComLgePlayerEngine service.
+
+Step 4: D-Bus interface receives the method call
+
+The ComLgePlayerEngine service receives the Play() method call from the D-Bus daemon.
+The service processes the method call and initiates playback on the player engine.
+
+Step 5: Playback result is returned to PlayerProvider
+
+The com_lge_player_engine_call_play_sync function waits for the playback result from the D-Bus interface.
+When the result is received, the function returns the result to the PlayerProvider instance.
+The PlayerProvider instance updates its internal state and returns the result to the PlayerStub.
+
+Step 6: PlayerStub returns the result to the coroutine thread
+
+The PlayerStub returns the result of the playback operation to the coroutine thread.
+The coroutine thread can then process the result and update the user interface accordingly.
+Note that this is a high-level overview of the code flow, and there may be additional steps or details that are not shown here
+
+
+
+--> codeflow
+
+The ComLgePlayerEngine service processes the Play() method call and initiates playback on the player engine.
+The service creates a response message and sends it back to the D-Bus daemon.
+The D-Bus daemon forwards the response to the GDBus proxy.
+The GDBus proxy calls the GAsyncReadyCallback function, which is the com_lge_player_engine_call_play_callback function.
+The callback function gets the result from the response message and calls the com_lge_player_engine_call_play_sync_finish function.
+The com_lge_player_engine_call_play_sync_finish function returns the result to the PlayerProvider instance.
+The PlayerProvider instance updates its internal state and returns the result to the PlayerStub instance.
+The PlayerStub instance updates its internal state and returns the result to the coroutine thread.
+
+
+=========================================================================================================
+
+
+MediaPlayer::Play() function
+
+Initializes the media player by calling MediaPlayerInit()
+Checks the media type and performs the following steps based on the type:
+If the media type is TYPE_3RD_AUDIO:
+Fades out the audio if necessary
+Plays the media using pipeline_->Play()
+Fades in the audio if necessary
+If the media type is not TYPE_3RD_AUDIO:
+Plays the media using pipeline_->Play()
+Fades in the audio if necessary
+Returns the result of the pipeline_->Play() call
+
+
+2. MediaPlayer::MediaPlayerInit() function
+
+Checks the media_init_flag_ variable to determine if the media player has already been initialized
+If the flag is true, initializes the media player by:
+Initializing the GStreamer framework using gst_init_check()
+Setting the GStreamer log level using gst_debug_set_threshold_from_string()
+Loading the sink and rank configurations using Conf::LoadSink() and Conf::LoadRank()
+Configuring Dolby Atmos support based on the configuration
+Setting the media_init_flag_ variable to false
+The overall code flow of the MediaPlayer.cpp file is as follows:
+
+The MediaPlayer::Play() function is called to play the media.
+The MediaPlayer::Play() function initializes the media player by calling MediaPlayerInit() if necessary.
+The MediaPlayer::MediaPlayerInit() function initializes the media player by setting up the GStreamer framework, loading the sink and rank configurations, and configuring Dolby Atmos support.
+The MediaPlayer::Play() function plays the media using pipeline_->Play() and fades in the audio if necessary.
+The MediaPlayer::Play() function returns the result of the pipeline_->Play() call.
+Note that the MediaPlayer::MediaPlayerInit() function is only called once, when the media player is first initialized. Subsequent calls to MediaPlayer::Play() will not re-initialize the media player.
+
+
+==========================================================
+
+main() function (not shown)
+
+The main() function creates an instance of the MediaPlayer class and an instance of the Creator class.
+The MediaPlayer instance is used to play the media content.
+
+2. MediaPlayer.cpp
+
+The MediaPlayer class has a CreatePipeline() function that takes a media type and a URI as input.
+The CreatePipeline() function:
+Calls the CreatePipeline() function of the Creator instance, passing in the media type and URI.
+Stores the returned pipeline instance in a smart pointer pipeline_.
+Stores the media type in a member variable media_type_.
+
+3. Creator.cpp
+
+The Creator class has a CreatePipeline() function that takes a media type and a URI as input.
+The CreatePipeline() function:
+Creates an instance of either AudioPipeline or VideoPipeline based on the media type.
+Calls the Load() function of the created pipeline instance, passing in the URI.
+Returns the pipeline instance.
+
+4. AudioPipeline.cpp
+
+The AudioPipeline class has a Load() function that takes a URI as input.
+The Load() function sets up the audio pipeline by:
+Creating a GStreamer playbin element
+Registering callbacks for element addition, bus messages, and seek control
+Setting properties such as the URI and audio sink
+Registering timers for updating position information and handling trick play
+The Load() function returns a boolean indicating the success or failure of the loading process.
+
+
+          +---------------+
+          |  main()      |
+          +---------------+
+                  |
+                  |
+                  v
+          +---------------+
+          |  MediaPlayer  |
+          |  (CreatePipeline) |
+          +---------------+
+                  |
+                  |
+                  v
+          +---------------+
+          |  Creator    |
+          |  (CreatePipeline) |
+          +---------------+
+                  |
+                  |
+                  v
+          +---------------+
+          |  AudioPipeline |
+          |  (Load)        |
+          +---------------+
+                  |
+                  |
+                  v
+          +---------------+
+          |  MediaPlayer  |
+          |  (store pipeline) |
+          +---------------+
+
+===================================================================================
