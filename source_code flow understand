@@ -1,0 +1,1086 @@
+
+Playerstub receive the openuri command
+
+1)Handling Local USB Audio :
+
+--> checks if the media type is "Audio"
+--> Set the media_id to "default_media_id" and calls checksvalidmediaid( ) ensures that "default_media_id" is valid.
+--> Get default connection name is fetched from the playerengine manager.
+
+Handling Valid Connection name :
+
+--> checks if the "connection name" is not empty and "default_media_id" is greater than 0, it is satisfies than only the connection name is valid.
+--> Then, inserts "default_media_id" and "connection name" into the player engine's connection map using "insertDefaultmediaId".
+
+Handling Invalid Connection name:
+
+--> if "connection name " is empty or "default_media_id" is less than or equal to 0, then to create a new payerengine by calls createplayerengine( ).
+--> By using getPID( ), upadated the "default_media_id" with new playerengine's ID.
+--> Retrives the connection name for the new playerengine by getconnectionname( ).
+
+2)Handling Non-audio media types:
+
+--> checks if the "current Type"(media type) already exists in map_media_id. if mediatype is new, set the map_media_id to 0 (for new mediatype).
+--> Create a playerengine for new mediatype and calls "checkvalidmediaid( )" for checking mediaid is valid.
+
+Handling Existing Mediaid :
+
+--> if the mediaid for current type is greater than 0, assigns the exxisting mediaid to "media_id".
+--> if the connection name is empty for this media_id, using getconnectionname( ) to retrive a valid connection name.
+--> if the valid connection name is obatined,then inserts it into the connection map.
+
+
+--> Playerstub create a openuri command = [map playerengine_id/ map media_id] to the playerprovider.
+
+
+Plyerprovider 
+
+The process method in playerprovider is to handle commands to open media URI.
+
+--> Extracting the command information such as index,URI,media type.
+--> checks the lastfailmediaid, if the current command's mediaid matches then return false.
+--> This methods prepare a playerengine proxy with the given connection name.if the proxyid returns invalid, the process is aborted. 
+
+
+playerEngine :
+
+--> [SetURI] media type[2][video], channel=[2], slot=[3]
+--> Parse the Mediatype
+--> set videopipeline with preroll,clock,ch,convert,type,saturation,contrast,brightness are load with URI.
+--> get playsink
+--> HandleBusChangeState [NULL -> READY]
+
+
+---------------------------------------------------------------------------------------------------------------------------------------->
+
+
+
+
+HMediaPlayer::setURL receives the call
+
+The HMediaPlayer::setURL method receives the call.
+
+
+Step 3: HMediaPlayer::setURL retrieves the Impl object
+
+The method retrieves the Impl object associated with the current HMediaPlayer instance using this->m_pImpl.get().
+
+
+Step 4: HMediaPlayer::setURL checks for a valid Impl object
+
+The method checks if the Impl object is not null (line 545). If it's null, the method returns HResult::ERROR.
+
+
+Step 5: HMediaPlayer::setURL delegates to HMediaPlayer::Impl::setURL
+
+If the Impl object is valid, the method delegates the call to the HMediaPlayer::Impl::setURL method, passing the url argument.
+
+
+Step 6: HMediaPlayer::Impl::setURL receives the call
+
+The HMediaPlayer::Impl::setURL method receives the call.
+
+
+Step 7: HMediaPlayer::Impl::setURL gets the PlayerEngineCCOSAdaptor instance
+
+The method gets the singleton instance of the PlayerEngineCCOSAdaptor class using PlayerEngineCCOSAdaptor::getInstance() 
+
+2)Handling Non-audio media types:
+
+
+
+--> checks if the "current Type"(media type) already exists in map_media_id. if mediatype is new, set the map_media_id to 0 (for new mediatype).
+
+--> Create a playerengine for new mediatype and calls "checkvalidmediaid( )" for checking mediaid is valid.
+
+
+
+Handling Existing Mediaid :
+
+
+
+--> if the mediaid for current type is greater than 0, assigns the exxisting mediaid to "media_id".
+
+--> if the connection name is empty for this media_id, using getconnectionname( ) to retrive a valid connection name.
+
+--> if the valid connection name is obatined,then inserts it into the connection map.
+
+
+
+
+
+--> Playerstub create a openuri command = [map playerengine_id/ map media_id] to the playerprovider
+
+
+
+
+
+Plyerprovider 
+
+
+
+The process method in playerprovider is to handle commands to open media URI.
+
+
+
+--> Extracting the command information such as index,URI,media type.
+
+--> checks the lastfailmediaid, if the current command's mediaid matches then return false.
+
+--> This methods prepare a playerengine proxy with the given connection name.if the proxyid returns invalid, the process is aborted
+
+
+--> PlayerStub receive the play command with media_id and connection name and send it to Playerprovider.
+
+--> playerprovider processes the play command
+
+
+Then flow of PlayerProvider,
+
+PlayerProvider :
+
+--> PlayerProvider receives the command with media_id and connection name from the Playerstub.For example : openuri command.
+
+--> Extracting the command information and checks the lastfailmediaid, if the current command's mediaid matches then return false.
+
+
+--> PlayerProvider initiates an com_lge_player_engine_call asynchronous D-Bus call to invoke the method on the player Engine.Which is used to create a proxy for a player engine.
+
+D-Bus service :
+
+--> D-Bus Service implements the methods defined in the DBus player interface. it receives incoming requests from the external client via DBus method and invoke the MediaPlayer.
+
+MediaPlayer :
+
+--> Upon receiving the request from the DBus player service, the Media player determines the type of media and creates the appropriate pipeline using the pipeline creator.
+
+Pipeline Creator :
+
+--> The pipeline creator analyzes the URI provided by the Media player to determine the type of media. Based on this analyzes, it creates the corresponding pipeline using the appropriate pipeline class.
+
+Audio/Video pipeline :
+
+--> They handles pipeline initialization, registering callbacks for handling elements and state changes and managing elements like uridecodebin, videoconvert..etc based on the type of media being played.
+
+--> As the media pipeline transitions between states( NULL, PLAYING, PAUSED, READY), appropriate ctions are taken to manage playback.
+
+--> The Gstreamer Media component provide functionalities related to Gstreamer, such as registering callbacks and handling pipeline elements, it ensuring for smooth playback.
+
+--> The Mediaplayer receives the pipeline instances from the pipeline creator, that instances are stored within the MediaPlayer for further operations.
+
+--> If the PlayerProvider requires access to the pipeline, the Mediaplayer provides a method to retrieve that pipeline instances. 
+
+
+PLAYERPROVIDER :
+
+
+--> PlayerStub receive the play command with media_id and connection name and send it to Playerprovider.
+
+--> playerprovider processes the play command
+
+
+Then flow of PlayerProvider,
+
+PlayerProvider :
+
+--> PlayerProvider receives the command with media_id and connection name from the Playerstub.
+
+--> Extracting the command information and checks the lastfailmediaid, if the current command's mediaid matches then return false.
+
+
+--> PlayerProvider initiates an com_lge_player_engine_call asynchronous D-Bus call to invoke the method on the player Engine.Which is used to create a proxy for a player engine.
+
+
+
+
+This is a C++ method named process in a class PlayerProvider. It takes two parameters: a command::Coro::pull_type& object named in and a command::PlayCommand* object named command. The method returns a boolean value indicating the success or failure of the operation.
+
+Here's a step-by-step breakdown of the code flow:
+
+1. Skip commands
+
+The method starts by checking if the command should be skipped. It does this by maintaining a static vector cv of CommandType objects, which contains only one element: command::CommandType::Play. It then checks if the command_queue_ object has a command with the same type and connection name as the current command. If it does, the method logs an info message and returns true, indicating that the command should be skipped.
+
+2. Prepare PE Proxy
+
+The method then prepares a PE (Player Engine) proxy by calling the preparePEProxy function, passing the connectionName as a parameter. The function returns an integer proxyId, which is used to identify the proxy. If the proxyId is less than or equal to -1, the method logs an error message and returns false, indicating that the proxy preparation failed.
+
+3. Check if URI needs to be opened
+
+This section of code is currently commented out (using #if 0), so it's not executed. However, I'll explain what it does:
+
+If the need_to_open_when_play_ flag is set for the current proxy, the method checks if the track needs to be opened when playing. It does this by seeking to the first track in the playlist using the playlist_mgr_->SeekTrack(0) function. If the track is invalid, the method logs a warning message and returns false. Otherwise, it extracts the track's URI and index and creates an OpenUriCommand object to open the URI. If the OpenUriCommand execution fails, the method sets the error code and returns false.
+
+4. Check if playback is blocked
+
+The method checks if playback is blocked by calling the blockPlayback() function. If it is, the method logs an info message and returns true, indicating that the command should be skipped.
+
+5. Play the media
+
+The method then calls the com_lge_player_engine_call_play_sync function to play the media using the PE proxy. This function takes several parameters, including the proxy object, a success flag, and a DBus error object. If the function fails, the method sets the error code and logs an error message.
+
+6. Update state and return result
+
+If the com_lge_player_engine_call_play_sync function succeeds, the method sets the is_playing_ flag to true and updates the state of the proxy to State::Playing. Finally, the method returns the success flag succeed, which indicates whether the play operation was successful.
+
+In summary, this method processes a PlayCommand by preparing a PE proxy, checking if the URI needs to be opened, checking if playback is blocked, and playing the media using the PE proxy. It returns true if the operation is successful and false otherwise.
+
+
+
+==========================================================================================
+
+
+Instances :
+
+
+A class is a blueprint or template that defines the characteristics of an object.
+
+An instance is an object created from a class, with its own set of attributes and methods.
+
+
+Class: Dog Instances:
+
+Fido (instance 1)
+Buddy (instance 2)
+Rex (instance 3)
+
+In this example, Dog is the class (the blueprint), and Fido, Buddy, and Rex are instances (objects) created from that class. 
+Each instance has its own set of attributes (e.g., name, age, breed) and methods (e.g., bark, wagTail), 
+but they all share the same characteristics defined by the Dog class
+
+=====================================================================
+
+Singleton instances
+
+A singleton instance is a single, unique instance of a class that is globally accessible, and it's the only instance of that class that can exist.
+
+Global access: The singleton instance is globally accessible, meaning it can be accessed from anywhere in the application.
+
+Resource Management: Singleton instances are useful for managing resources that are expensive to create or have a high overhead, 
+such as database connections, file handles, or network connections. 
+By creating a single instance, you can ensure that the resource is only created once and reused throughout the application.
+
+
+Global Access: Singleton instances provide a global point of access to a resource or service, making it easily accessible from anywhere in the application.
+This is particularly useful for logging, configuration, or caching mechanisms.
+
+=================================================================
+
+The map is used to store the media IDs for different media types. When a new media type is requested, the method checks if the media type is already present in the map. If it is, the corresponding media ID is retrieved. If not, a new entry is added to the map with a media ID of 0.
+
+The map is used to:
+
+Store media IDs for different media types.
+Retrieve media IDs based on the media type.
+Prevent duplicate media IDs for the same media type.
+
+When a new audio media type is requested, the method checks if the audio media type is already present in the map. 
+If it is, the corresponding media ID is retrieved. If not, a new entry is added to the map with a media ID of 0.
+
+=================================================================
+
+HMediaplayer.cpp
+
+Create an instance of the HMediaPlayer class.
+Call the setMediaType() method on the HMediaPlayer class, passing in the HMediaPlayerType::AUDIO_LOCAL_USBMUSIC type to indicate that you want to play a USB audio file.
+Call the setURL() method on the HMediaPlayer class, passing in the URL or file path of the USB audio file.
+Call the play() method on the HMediaPlayer class to start playing the USB audio file
+
+ playerProxy->openUri(str_url_with_slot, audio_channel, media_type, callStatus, error, media_id, &callInfo);--> PlayerStub.cpp
+
+
+Playerstub.cpp
+
+
+===================================================================================
+
+
+HMediaPlayer
+  |
+  |-- setMediaType(HMediaPlayerType)
+  |    |
+  |    |-- switch (HMediaPlayerType)
+  |    |    |
+  |    |    |-- set media type
+  |    |
+  |-- setURL(std::string)
+  |    |
+  |    |-- PlayerEngineCCOSAdaptor::setURL(std::string)
+  |
+  |-- play()
+  |    |
+  |    |-- PlayerEngineCCOSAdaptor::load(uint64_t, bool, bool)
+  |    |    |
+  |    |    |-- set media type
+  |    |    |-- set audio channel
+  |    |    |-- play media
+  |    |
+  |    |-- PlayerEngineCCOSAdaptor::play(uint64_t)
+  |         |
+  |         |-- playerProxy->play(media_id)
+
+
+
+====================================================================================
+
+
+     +---------------+ 
+     |  Application  |
+     +---------------+
+              |
+              | openUri()
+              v
+      +----------------+
+      |  HMediaPlayer  |
+      +----------------+
+              |
+              | setMediaType(HMediaPlayerType)
+              | setURL(std::string)
+              | load(uint64_t, bool, bool)
+              |    |-- set media type
+              |    |-- set audio channel
+              |    |-- playerProxy->openUri(std::string, int, PlayerTypes::MediaType)
+              v
+      +---------------------------+
+      |  PlayerEngineCCOSAdaptor  |
+      +---------------------------+
+              | (part of HMediaPlayer)
+              |
+              | playerProxy->openUri(std::string, int, PlayerTypes::MediaType)
+              v
+      +------------------+
+      |  PlayerStubImpl  |
+      +------------------+
+              |
+              | check media type
+              | retrieve default connection name
+              | create player engine instance
+              v
+      +-----------------------+
+      |  PlayerEngineManager  |
+      +-----------------------+
+              |
+              | createPlayerEngine()
+              v
+      +----------------+
+      |  PlayerEngine  |
+      +----------------+
+              |
+              | set up audio pipeline
+              | start playing audio file
+              v
+      +------------------+
+      |  Audio Playback  |
+      +------------------+
+              |
+              | return media ID
+              v
+      +---------------+
+      |  Application  |
+      +---------------+
+
+=============================================================================
+
+-->PlayerEngineManager.cpp
+
+
+getConnectionName(uint32_t mediaId)
+
+This function takes a mediaId as an input parameter and returns a connection name associated with that media ID. Here's what the code does:
+
+It searches for the mediaId in a map called connectionMap using the find() method.
+If the mediaId is found in the map, it returns the corresponding connection name (stored in the second element of the map iterator).
+If the mediaId is not found in the map, it logs an info message indicating that the key-value pair is not present in the map and returns an empty string.
+
+
+
+getConnectionName()
+
+This function returns a connection name, but it doesn't take any input parameters. Here's what the code does:
+
+It initializes an empty string ret that will be returned at the end of the function.
+It sleeps for 100 milliseconds using usleep().
+It logs an info message indicating that the getConnectionName() method is being called.
+It uses the GDBus library to connect to the D-Bus session bus and retrieve a connection name.
+It creates a GDBusConnection object using g_bus_get_sync() and checks if it's valid.
+If the connection is valid, it creates a GDBusProxy object using g_dbus_proxy_new_sync() and checks if it's valid.
+If the proxy is valid, it calls the GetNameOwner method on the proxy using g_dbus_proxy_call_sync() and passes the string "com.lge.PlayerEngine" as an argument.
+It checks if the result of the method call is valid and extracts the connection name from the result using g_variant_get_child_value() and g_variant_get().
+It logs an info message indicating the new connection name created.
+It returns the connection name (or an empty string if an error occurred).
+
+
+Key Differences between above two methods :
+
+Input parameter: The first snippet takes a mediaId as an input parameter, while the second snippet doesn't take any input parameters.
+
+Map lookup: The first snippet performs a map lookup to retrieve a connection name associated with the mediaId. 
+The second snippet uses D-Bus to retrieve a connection name.
+
+Synchronous vs. asynchronous: The first snippet is a simple synchronous function that returns a connection name immediately. 
+The second snippet uses asynchronous D-Bus calls to retrieve the connection name, which may take some time to complete.
+
+=======================================================================================================================================================
+
+
+void PlayerEngineManager::insertMediaId(int mediaId, string connectionName)
+
+This function inserts a new entry into a map called connectionMap with the given mediaId as the key and the connectionName as the value.
+
+Here's a step-by-step explanation:
+
+The function takes two parameters: mediaId (an integer) and connectionName (a string).
+
+The function inserts a new entry into the connectionMap using the insert method.
+
+The entry is created as a pair object, where the first element is the mediaId (key) and the second element is the connectionName (value).
+
+The connectionMap is likely a std::map<int, string> object, which is a associative container that stores elements formed by the combination 
+of a key value and a mapped value.
+
+The purpose of this function is to associate a mediaId with a connectionName in the connectionMap. This allows the PlayerEngineManager to keep track of
+which mediaId is associated with which connectionName
+
+
+
+string PlayerEngineManager::insertDefaultMediaId(int mediaId, string connectionName)
+
+This function is similar to the previous one, but it has some additional logic to handle the case where the mediaId is already present in the connectionMap.
+
+Here's a step-by-step explanation:
+
+The function takes two parameters: mediaId (an integer) and connectionName (a string).
+
+The function first checks if the mediaId is already present in the connectionMap using the find method.
+
+If the mediaId is found (i.e., it != connectionMap.end()), the function checks if the associated connectionName is different from the one passed as a parameter.
+
+If the connectionName is different, the function logs a message indicating that the connection name is different and updates the connectionName 
+associated with the mediaId in the connectionMap.
+
+The function returns the original connectionName associated with the mediaId.
+
+If the mediaId is not found in the connectionMap, the function logs a message indicating that the default connection is not in the map and 
+inserts a new entry into the connectionMap using the insert method.
+
+The function also sets the firstBusId member variable to the connectionName.
+
+The function returns an empty string (returnName).
+
+============================================================================================
+
+Dbus_player_interface <---> dbus_player_service
+
+The first code snippet is a D-Bus method implementation for SetURI in the DBusPlayerService class. It takes a uri and option as input parameters and calls the SetURI method on the player_ object.
+
+The second code snippet is a D-Bus proxy method com_lge_player_engine_call_set_uri that asynchronously invokes the SetURI method on a ComLgePlayerEngine proxy object. It takes a uri and option as input parameters, creates a GVariant object to represent the method call arguments, and calls g_dbus_proxy_call to invoke the SetURI method on the proxy object.
+
+The connection:
+
+The connection between the two code snippets is that the com_lge_player_engine_call_set_uri method is likely used to call the SetURI method implemented in the DBusPlayerService class.
+
+Here's a possible scenario:
+
+A client application uses the ComLgePlayerEngine proxy object to call the com_lge_player_engine_call_set_uri method, passing a uri and option as arguments.
+
+The com_lge_player_engine_call_set_uri method creates a GVariant object to represent the method call arguments and calls 
+g_dbus_proxy_call to invoke the SetURI method on the proxy object.
+
+The D-Bus daemon receives the method call and routes it to the DBusPlayerService instance that implements the SetURI method.
+
+The DBusPlayerService instance receives the method call and calls the SetURI method implementation, passing the uri and option arguments.
+
+The SetURI method implementation in the DBusPlayerService class processes the uri and option arguments and returns a result.
+
+In summary, the com_lge_player_engine_call_set_uri method is a proxy method that calls the SetURI method implemented in the DBusPlayerService class, 
+allowing clients to interact with the DBusPlayerService instance over D-Bus.
+
+
+Summary:
+
+The DBusPlayerInterface (represented by the com_lge_player_engine_call_set_uri method) provides a proxy method to call the SetURI method implemented in the 
+DBusPlayerService class.
+
+
+          +---------------+
+          |  Client App  |
+          +---------------+
+                  |
+                  |  com_lge_player_engine_call_set_uri
+                  |  (proxy method)
+                  v
+          +---------------+
+          |  DBusPlayerInterface  |
+          |  (ComLgePlayerEngine)  |
+          +---------------+
+                  |
+                  |  D-Bus Call
+                  v
+          +---------------+
+          |  DBusPlayerService  |
+          |  (implements SetURI)  |
+          +---------------+
+                  |
+                  |  SetURI Method
+                  |  (implementation)
+                  v
+
+==============================================================================================================================================
+
+GstMedia.cpp
+
+
+Method signature:
+
+bool GstMedia::CreateGst(const char* playbin_name)
+
+Parameters:
+
+playbin_name: a const char* pointer to a string that specifies the name of the playbin element.
+
+Return value:
+
+bool: a boolean value indicating whether the pipeline creation was successful or not.
+
+
+Method body:
+
+Check if pipeline is already created: The method first checks if the pipeline_ member variable is already initialized. If it's not null, it means 
+the pipeline has already been created, and the method returns true immediately.
+
+Create a new pipeline: If the pipeline_ is null, the method creates a new pipeline using the gst_element_factory_make function. 
+This function is part of the GStreamer API and is used to create a new element instance from a factory.
+
+The first argument "playbin" specifies the type of element to create, which is a playbin element.
+
+The second argument playbin_name specifies the name of the playbin element. This name is used to identify the element in the pipeline.
+
+The gst_element_factory_make function returns a GstElement* pointer to the newly created element, which is assigned to the pipeline_ member variable.
+
+Check if pipeline creation was successful: If the pipeline_ is still null after the gst_element_factory_make call, it means the pipeline creation failed. 
+In this case, the method returns false.
+
+Return success: If the pipeline creation was successful, the method returns true.
+
+
+
+GStreamer concepts:
+
+Pipeline: A pipeline is a sequence of elements that process media data. In this case, the pipeline consists of a single playbin element.
+Element: An element is a building block of a pipeline. It can be a source, sink, filter, or other type of element. In this case, the playbin element is a source element that plays media files.
+Factory: A factory is a mechanism that creates element instances. In this case, the gst_element_factory_make function is used to create a playbin element instance from a factory.
+
+
+Why use playbin?
+
+The playbin element is a high-level element that provides a simple way to play media files. It's a bin element that contains a set of elements that are necessary 
+to play media files, such as a source element, a decoder element, and a sink element.
+
+By using playbin,the developer doesn't need to worry about creating and configuring individual elements to play media files.
+
+=====================================================================================================================================
+
+Rough understanding of HMediaPlayer code for USB_AUDIO mediatype.
+
+
+Step 1: Create an instance of HMediaPlayer
+
+The user creates an instance of the HMediaPlayer class, passing the handle of the audio file as an argument to the constructor.
+The constructor initializes the HMediaPlayer object and sets the media_type to HMediaPlayerType::AUDIO_LOCAL_USBMUSIC (or another appropriate type based on the handle).
+
+
+Step 2: Set the URL of the audio file
+
+The user calls the setURL() method, passing the URL of the audio file as an argument.
+The setURL() method sets the url member variable of the HMediaPlayer object to the specified URL.
+
+
+Step 3: Initialize the media player engine
+
+The HMediaPlayer object initializes the media player engine, which may involve loading the necessary libraries, creating a media player instance, 
+and setting up the audio output.
+The media player engine may also perform additional tasks, such as:
+Checking the file format and codec support
+Allocating memory for audio buffers
+Setting up the audio playback thread
+
+
+Step 4: Open the audio file
+
+The HMediaPlayer object calls the open() method of the media player engine, passing the URL of the audio file as an argument.
+The open() method opens the audio file and prepares it for playback.
+The media player engine may perform additional tasks, such as:
+Reading the audio file metadata (e.g., title, artist, duration)
+Initializing the audio decoder
+Setting up the audio playback pipeline
+
+
+Step 5: Prepare the audio playback
+
+The HMediaPlayer object calls the prepare() method of the media player engine.
+The prepare() method prepares the audio playback by:
+Allocating audio buffers
+Setting up the audio playback thread
+Initializing the audio playback state
+
+
+Step 6: Start the audio playback
+
+The user calls the play() method of the HMediaPlayer object.
+The play() method starts the audio playback by:
+Starting the audio playback thread
+Sending the audio data to the audio output device
+Updating the playback state
+
+
+Step 7: Monitor the audio playback
+
+The HMediaPlayer object monitors the audio playback and updates the playback state accordingly.
+The media player engine may also perform additional tasks, such as:
+Updating the playback position
+Handling audio playback errors
+Providing playback statistics (e.g., bitrate, buffer level)
+
+
+---------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+HMediaPlayer.cpp 
+
+
+
+HMediaPlayer::Impl::Impl(const HUInt64 &handle)
+    : status(HMediaPlayingState::STOPPED),
+    PlayerListener(nullptr),
+    url(),
+    Subtitle(nullptr),
+    current_position(0),
+    media_duration(0)
+{
+    /*save the handle to internal structure */
+    //this->commonAPIProxyInit();
+    this->setHandle(handle);
+
+    HMediaPlayerType media_type = HMediaPlayerType::MAX;
+    switch(handle){
+        case 0:
+            media_type = HMediaPlayerType::AUDIO_LOCAL_USBMUSIC;
+            break;
+        case 1:
+            media_type = HMediaPlayerType::VIDEO_LOCAL_USBVIDEO;
+            break;
+        case 9:
+            media_type = HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND;
+            break;
+        case 10:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_KAOLAFM;
+            break;
+        case 11:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_MELON;
+            break;
+        case 12:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_QQMUSIC;
+            break;
+        case 13:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_KAKAOI;
+            break;
+        case 14:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_GENIE;
+            break;
+        case 15:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_XIMALAYA;
+            break;
+        case 16:
+            media_type = HMediaPlayerType::VIDEO_MOVING_PICTURE_MANUAL;
+            break;
+        case 17:
+            media_type = HMediaPlayerType::VIDEO_STREAMING;
+            break;
+        case 18:
+            media_type = HMediaPlayerType::AUDIO_LOCAL_MOOD_THERAPY;
+            break;
+        case 19:
+            media_type = HMediaPlayerType::VIDEO_LOCAL_MOOD_THERAPY;
+            break;
+        case 20:
+            media_type = HMediaPlayerType::VIDEO_KIDS_CARE_MODE;
+            break;
+        case 21:
+            media_type = HMediaPlayerType::VIDEO_RECORDING_PLAY;
+            break;
+        case 22:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_PODBBANG;
+            break;
+        case 23:
+            media_type = HMediaPlayerType::VIDEO_DVRS_FRONT;
+            break;
+        case 24:
+            media_type = HMediaPlayerType::VIDEO_DVRS_REAR;
+            break;
+        case 25:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_KAKAOI2;
+            break;
+        case 26:
+            media_type = HMediaPlayerType::AUDIO_FACE_DETECTION;
+            break;
+        case 27:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_VIBE;
+            break;
+        case 28:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_AIQUTING;
+            break;
+        case 29:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_TENCENT_MINI_APP;
+            break;
+        case 30:
+            media_type = HMediaPlayerType::VIDEO_STREAMING_TENCENT_MINI_APP;
+            break;
+        case 31:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_WELAAA;
+            break;
+        case 32:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_KAKAOI3;
+            break;
+        case 33:
+            media_type = HMediaPlayerType::AUDIO_STREAMING_GENESIS_MUSIC;
+            break;
+        default:
+            media_type = HMediaPlayerType::AUDIO_LOCAL_USBMUSIC;
+    }
+}
+
+
+-> Constructor
+
+The code snippet is a constructor for a class called HMediaPlayer::Impl. The constructor takes a single argument handle of type HUInt64.
+
+-> Initialization
+
+The constructor initializes several member variables of the class:
+
+status: initialized to HMediaPlayingState::STOPPED, which indicates that the media player is in a stopped state.
+
+PlayerListener: initialized to nullptr, which means that there is no player listener attached to the media player.
+
+url: initialized to an empty string, which represents the URL of the media content.
+
+Subtitle: initialized to nullptr, which means that there is no subtitle attached to the media player.
+
+current_position: initialized to 0, which represents the current playback position of the media content.
+
+media_duration: initialized to 0, which represents the total duration of the media content.
+
+
+-> Handle initialization
+
+The constructor saves the handle argument to an internal structure using the setHandle(handle) method.
+
+-> Media type determination
+
+The constructor determines the media type based on the value of the handle argument using a switch statement.
+
+Here is a breakdown of the switch statement:
+
+If handle is 0, the media type is set to HMediaPlayerType::AUDIO_LOCAL_USBMUSIC.
+If handle is 1, the media type is set to HMediaPlayerType::VIDEO_LOCAL_USBVIDEO.
+If handle is 9, the media type is set to HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND.
+...
+If handle is 33, the media type is set to HMediaPlayerType::AUDIO_STREAMING_GENESIS_MUSIC.
+If handle is not one of the above values, the media type is set to HMediaPlayerType::AUDIO_LOCAL_USBMUSIC by default.
+Media type assignment
+
+The determined media type is assigned to a local variable media_type of type HMediaPlayerType.
+
+No further actions
+
+The constructor does not perform any further actions after determining the media type. The media_type variable is not used anywhere else in the constructor.
+
+
+-> Code flow summary
+
+Here is a summary of the code flow:
+
+The constructor is called with a handle argument.
+The constructor initializes several member variables.
+The constructor saves the handle argument to an internal structure.
+The constructor determines the media type based on the handle value using a switch statement.
+The determined media type is assigned to a local variable media_type.
+The constructor does not perform any further actions.
+Note that the media_type variable is not used anywhere else in the constructor, so it is not clear what the purpose of determining the media type is in this context.
+
+--> Handle purpose :
+
+In this code snippet, the media_type is determined solely based on the value of the handle argument passed to the constructor.
+
+The handle value is used in a switch statement to determine the corresponding media_type value from an enumeration called HMediaPlayerType. The media_type value is then assigned to a local variable media_type.
+
+Here's a breakdown of how the handle value is used to determine the media_type:
+
+Each case in the switch statement corresponds to a specific handle value.
+When a match is found, the corresponding media_type value is assigned to the media_type variable.
+If no match is found, the default case assigns HMediaPlayerType::AUDIO_LOCAL_USBMUSIC to the media_type variable.
+For example, if the handle value is 0, the media_type will be set to HMediaPlayerType::AUDIO_LOCAL_USBMUSIC. 
+If the handle value is 1, the media_type will be set to HMediaPlayerType::VIDEO_LOCAL_USBVIDEO, and so on.
+
+So, in this implementation, the handle value is the sole determinant of the media_type value.
+
+--------------------------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>>>>>
+
+
+HResult HMediaPlayer::Impl::setMediaType(HMediaPlayerType type)
+{
+    PlayerTypes::MediaType media_type;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+
+    switch(type){
+        case HMediaPlayerType::AUDIO_LOCAL_USBMUSIC:
+            media_type = PlayerTypes::MediaType::AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_USBVIDEO:
+            media_type = PlayerTypes::MediaType::VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND:
+            media_type = PlayerTypes::MediaType::NATURE_SOUND;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAOLAFM:
+            media_type = PlayerTypes::MediaType::KAOLAFM;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_MELON:
+            media_type = PlayerTypes::MediaType::MELON;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_QQMUSIC:
+            media_type = PlayerTypes::MediaType::QQMUSIC;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI:
+            media_type = PlayerTypes::MediaType::KAKAOI;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENIE:
+            media_type = PlayerTypes::MediaType::GENIE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_XIMALAYA:
+            media_type = PlayerTypes::MediaType::XIMALAYA;
+            break;
+        case HMediaPlayerType::VIDEO_MOVING_PICTURE_MANUAL:
+            media_type = PlayerTypes::MediaType::MANUAL_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING:
+            media_type = PlayerTypes::MediaType::GOLF_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_KIDS_CARE_MODE:
+            media_type = PlayerTypes::MediaType::KIDS_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_RECORDING_PLAY:
+            media_type = PlayerTypes::MediaType::RECORDING_PLAY;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_PODBBANG:
+            media_type = PlayerTypes::MediaType::PODBBANG;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_FRONT:
+            media_type = PlayerTypes::MediaType::DVRS_FRONT;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_REAR:
+            media_type = PlayerTypes::MediaType::DVRS_REAR;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI2:
+            media_type = PlayerTypes::MediaType::KAKAOI2;
+            break;
+        case HMediaPlayerType::AUDIO_FACE_DETECTION:
+            media_type = PlayerTypes::MediaType::FACE_DETECTION;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_VIBE:
+            media_type = PlayerTypes::MediaType::VIBE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_AIQUTING:
+            media_type = PlayerTypes::MediaType::TENCENT_FUNAUDIO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_WELAAA:
+            media_type = PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI3:
+            media_type = PlayerTypes::MediaType::KAKAOI3;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENESIS_MUSIC:
+            media_type = PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING;
+            break;
+        default:
+            return HResult::INVALID;
+    }
+
+    if(Adaptor->setMediaType(getHandle(),media_type)){
+        return HResult::OK;
+    }
+
+    return HResult::ERROR;
+}
+
+
+
+
+
+
+
+The code snippet is a function named setMediaType that takes a single argument type of type HMediaPlayerType. The function returns an HResult value, 
+which is an enumeration that represents the result of the function call.
+
+Function purpose
+
+The purpose of this function is to set the media type of a media player based on the input type parameter. The media type determines the type of 
+media content that the player can play, such as audio, video, or other types of media.
+
+Switch statement
+
+The function uses a switch statement to determine the media type based on the input type parameter. The switch statement has multiple cases, each 
+corresponding to a specific value of the HMediaPlayerType enumeration.
+
+Case statements
+
+Each case statement sets the media_type variable to a specific value of the PlayerTypes::MediaType enumeration. 
+For example, if the input type is HMediaPlayerType::AUDIO_LOCAL_USBMUSIC, the media_type is set to PlayerTypes::MediaType::AUDIO.
+
+Here is a breakdown of each case statement:
+
+HMediaPlayerType::AUDIO_LOCAL_USBMUSIC: Sets media_type to PlayerTypes::MediaType::AUDIO.
+HMediaPlayerType::VIDEO_LOCAL_USBVIDEO: Sets media_type to PlayerTypes::MediaType::VIDEO.
+HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND: Sets media_type to PlayerTypes::MediaType::NATURE_SOUND.
+... (and so on for each case statement)
+
+
+Default case
+
+If the input type does not match any of the case statements, the function returns an HResult value of HResult::INVALID.
+
+Adaptor instance
+
+The function gets an instance of the PlayerEngineCCOSAdaptor class using the getInstance() method. This adaptor instance is used to set the media type 
+of the media player.
+
+Set media type
+
+The function calls the setMediaType() method of the adaptor instance, passing the getHandle() method as the first argument and the media_type variable as the 
+second argument. This sets the media type of the media player.
+
+Return value
+
+If the setMediaType() method returns successfully, the function returns an HResult value of HResult::OK. Otherwise, it returns an HResult value of HResult::ERROR.
+
+In summary, this function takes an input type parameter, determines the corresponding media type using a switch statement, 
+and sets the media type of a media player using an adaptor instance.
+
+-------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+This code snippet is a method implementation of load in the HMediaPlayer::Impl class. Here's what's happening:
+
+The method takes a bool parameter needDownmix.
+
+It initializes an HResult variable ret to HResult::INVALID.
+
+It gets an instance of PlayerEngineCCOSAdaptor using getInstance().
+
+It calls the load method on the Adaptor instance, passing three arguments:
+
+getHandle(): This is likely a handle or identifier for the media player instance.
+
+true: This is a boolean flag indicating that audio focus is required.
+
+needDownmix: This is the bool parameter passed to the load method.
+
+The load method on the Adaptor instance returns an int32_t value, which is stored in the result variable.
+
+The method then checks the value of result and sets the ret variable accordingly:
+If result is -1, ret is set to HResult::ERROR.
+If result is -2, ret is set to HResult::CONNECTION_FAIL.
+Otherwise, ret is set to HResult::OK.
+
+Finally, the method returns the ret value.
+
+The purpose of this method is to load media content using the PECCOSAdaptor instance, which is responsible for interacting with the underlying media player engine. 
+The method returns an HResult value indicating the outcome of the load operation
+
+-------------------------------------------------->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+This code snippet is a method implementation of load in the HMediaPlayer class. Here's what's happening:
+
+The method takes a bool parameter needDownmix.
+
+It gets a pointer to the Impl instance using this->m_pImpl.get().
+
+It checks if the Player pointer is not null.
+
+If the Player pointer is valid, it calls the load method on the Impl instance, passing the needDownmix parameter.
+
+The load method on the Impl instance returns an HResult value, which is returned by this method.
+
+If the Player pointer is null, the method returns HResult::ERROR.
+
+The purpose of this method is to provide a public interface for loading media content using the HMediaPlayer class.
+It delegates the actual load operation to the Impl instance, which is responsible for interacting with the underlying media player engine.
+
+
+-> Connection and differences
+
+The connection between these two code snippets is that the HMediaPlayer::load method delegates the load operation to the HMediaPlayer::Impl::load method. The HMediaPlayer::Impl::load method is responsible for interacting with the PlayerEngineCCOSAdaptor instance to load the media content.
+
+-> The main differences between these two code snippets are:
+
+The HMediaPlayer::load method is a public interface that provides a simple way to load media content using the HMediaPlayer class.
+
+The HMediaPlayer::Impl::load method is an internal implementation that interacts with the PlayerEngineCCOSAdaptor instance to load the media content.
+
+The HMediaPlayer::load method returns an HResult value directly, while the HMediaPlayer::Impl::load method returns an HResult value after 
+processing the result of the load method on the Adaptor instance.
+
+In summary, the HMediaPlayer::load method provides a public interface for loading media content, while the HMediaPlayer::Impl::load method is an
+
+
+-------------------------------------------------------------------->>>>>>>>>>>>>>>>>>
+
+
+1. HMediaPlayer::load
+
+This method is part of the HMediaPlayer class, which is a public interface for loading media content. It takes a bool parameter needDownmix and
+returns an HResult value indicating the outcome of the load operation.
+
+Responsibility: This method is responsible for delegating the load operation to the Impl instance, which is an internal implementation of the HMediaPlayer class.
+
+
+2. HMediaPlayer::Impl::load
+
+This method is part of the HMediaPlayer::Impl class, which is an internal implementation of the HMediaPlayer class. It takes a bool parameter needDownmix 
+and returns an HResult value indicating the outcome of the load operation.
+
+Responsibility: This method is responsible for interacting with the PlayerEngineCCOSAdaptor instance to load the media content.
+
+
+3. PlayerEngineCCOSAdaptor::load
+
+This method is part of the PlayerEngineCCOSAdaptor class, which is responsible for adapting the media player engine to the CCOS (Common Communication Operating System) framework. It takes three parameters: handle, use_audio_focus, and needDownmix, and returns an int32_t value indicating the outcome of the load operation.
+
+Responsibility: This method is responsible for loading the media content using the CCOS framework, including setting the media type, audio channel, and volume type, 
+as well as requesting APN changes if necessary.
+
+Relationships and differences:
+
+HMediaPlayer::load delegates the load operation to HMediaPlayer::Impl::load.
+HMediaPlayer::Impl::load delegates the load operation to PlayerEngineCCOSAdaptor::load.
+PlayerEngineCCOSAdaptor::load is the actual implementation of the load operation, which interacts with the CCOS framework.
+
+The main difference between these methods is the level of abstraction and the specific responsibilities of each method.
+
+HMediaPlayer::load is a public interface, while HMediaPlayer::Impl::load and PlayerEngineCCOSAdaptor::load are internal implementations.
+
+
+
+
+
