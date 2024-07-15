@@ -1,0 +1,1183 @@
+
+--> PLAY
+
+HMediaPlayer.cpp
+
+ HResult HMediaPlayer::Impl::play()
+434 {
+435     HResult ret = HResult::OK;
+436     PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+437
+438     if(Adaptor->play(getHandle())){
+439
+440     }
+441     else {
+442         ret = HResult::ERROR;
+443     }
+444     return ret;
+445 }
+
+
+HResult HMediaPlayer::play()
+575 {
+576     Impl *Player = this->m_pImpl.get();
+577
+578     if(Player != NULL){
+579         return Player->play();
+580     }
+581     return HResult::ERROR;
+582 }
+
+The user calls the play() method on an instance of the HMediaPlayer class, e.g., myPlayer.play().
+
+Step 2: HMediaPlayer::play() receives the call
+
+The HMediaPlayer::play() method (Code 2) receives the call. This method is a wrapper around the HMediaPlayer::Impl::play() method.
+
+Step 3: HMediaPlayer::play() checks for a valid Impl object
+
+The HMediaPlayer::play() method checks if the Impl object associated with the current HMediaPlayer instance is valid (i.e., not null). 
+This is done using this->m_pImpl.get().
+
+Step 4: HMediaPlayer::play() delegates to HMediaPlayer::Impl::play()
+
+If the Impl object is valid, the HMediaPlayer::play() method delegates the call to the HMediaPlayer::Impl::play() method (Code 1) using Player->play().
+
+Step 5: HMediaPlayer::Impl::play() performs the playback operation
+
+The HMediaPlayer::Impl::play() method receives the call and performs the actual playback operation using the PlayerEngineCCOSAdaptor instance.
+
+Step 6: Playback operation is executed
+
+The PlayerEngineCCOSAdaptor instance executes the playback operation, which may involve loading the media, setting up the playback engine, and starting the playback.
+
+Step 7: Result is returned (optional)
+
+If the playback operation is successful, the HMediaPlayer::Impl::play() method may return a result or status code indicating the success of the operation. 
+This result is then propagated back to the HMediaPlayer::play() method and eventually to the user.
+
+
+---------------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>>> 
+
+--> SETURL :
+
+HMediaPlayer.cpp
+
+ HResult HMediaPlayer::setURL(const std::string& url)
+543 {
+544     Impl *Player = this->m_pImpl.get();
+545     if(Player != NULL){
+546         return Player->setURL(url);
+547     }
+548
+549     return HResult::ERROR;
+550 }
+
+
+ HResult HMediaPlayer::Impl::setURL(const std::string& url)
+384 {
+385     HResult ret = HResult::OK;
+386     PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+387     //this->url = url;
+388     if(Adaptor->setURL(getHandle(),url)){
+389
+390     }else {
+391         ret = HResult::ERROR;
+392     }
+393     return ret;
+394 }
+
+
+Step 1: User calls HMediaPlayer::setURL
+
+The user calls the setURL method on an instance of the HMediaPlayer class, passing a std::string object url as an argument, 
+e.g., myPlayer.setURL("https://example.com/video.mp4").
+
+
+Step 2: HMediaPlayer::setURL receives the call
+
+The HMediaPlayer::setURL method (lines 543-550) receives the call.
+
+
+Step 3: HMediaPlayer::setURL retrieves the Impl object
+
+The method retrieves the Impl object associated with the current HMediaPlayer instance using this->m_pImpl.get() (line 544).
+
+
+Step 4: HMediaPlayer::setURL checks for a valid Impl object
+
+The method checks if the Impl object is not null (line 545). If it's null, the method returns HResult::ERROR (line 549).
+
+
+Step 5: HMediaPlayer::setURL delegates to HMediaPlayer::Impl::setURL
+
+If the Impl object is valid, the method delegates the call to the HMediaPlayer::Impl::setURL method (lines 546-547), passing the url argument.
+
+
+Step 6: HMediaPlayer::Impl::setURL receives the call
+
+The HMediaPlayer::Impl::setURL method (lines 384-394) receives the call.
+
+
+Step 7: HMediaPlayer::Impl::setURL gets the PlayerEngineCCOSAdaptor instance
+
+The method gets the singleton instance of the PlayerEngineCCOSAdaptor class using PlayerEngineCCOSAdaptor::getInstance() (line 386).
+
+
+Step 8: HMediaPlayer::Impl::setURL sets the URL using the adaptor
+
+The method calls the setURL method on the PlayerEngineCCOSAdaptor instance, passing the getHandle() and url arguments (line 388).
+
+
+Step 9: HMediaPlayer::Impl::setURL checks the result
+
+If the setURL call on the adaptor is successful, the method sets ret to HResult::OK (line 385). If it fails, the method sets ret to HResult::ERROR (line 391).
+
+
+Step 10: HMediaPlayer::Impl::setURL returns the result
+
+The method returns the result ret to the caller (line 393).
+
+
+Step 11: HMediaPlayer::setURL returns the result
+
+The HMediaPlayer::setURL method returns the result received from the HMediaPlayer::Impl::setURL method to the user (line 547).
+
+--------------------------------------------------------------->>>>>>>>>>>>>>>>>>>
+
+HResult HMediaPlayer::Impl::load(bool needDownmix)
+397 {
+398     HResult ret = HResult::INVALID;
+399     PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+400     int32_t result = 0;
+401
+402     result = Adaptor->load(getHandle(), true /* Audio focus */, needDownmix);
+403
+404     if(result == -1){
+405         ret = HResult::ERROR;
+406     } else if (result == -2) {
+407         ret = HResult::CONNECTION_FAIL;
+408     } else {
+409         ret = HResult::OK;
+410     }
+411
+412     return ret;
+413 }
+
+
+ HResult HMediaPlayer::load(bool needDownmix)
+553 {
+554     Impl *Player = this->m_pImpl.get();
+555
+556     if(Player != NULL){
+557         return Player->load(needDownmix);
+558     }
+559
+560     return HResult::ERROR;
+561 }
+
+------------------------------------------------------------------------------>>>>>>>>>>>>>>>>>>>>
+
+PlayerEngineCCOSAdaptor.cpp
+
+
+/*
+ * Return -1 : HResult::ERROR
+ * Return -2 : HResult::CONNECTION_FAIL (APN FAiled)
+ * Return 0  : HResult::OK
+ */
+int32_t PlayerEngineCCOSAdaptor::load(uint64_t handle, bool use_audio_focus, bool needDownmix) {
+    std::function<void(const CommonAPI::CallStatus&, uint64_t rhandle, const PlayerTypes::PlayerError&)> callback;
+
+    PlayerTypes::PlayerError error;
+    CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::INVALID_VALUE;
+    CommonAPI::CallInfo callInfo(2000);
+
+    GError *gError = NULL;
+    GVariant *ret = NULL;
+
+    PlayerEngineAdaptationInfo info;
+
+    std::string str_url = "";
+    std::string str_url_with_slot = "";
+
+    bool needRetry = false;
+    bool isAPNChanged = false;
+    int32_t audio_channel = 0;
+    uint32_t media_id = 0;
+    uint32_t player_type = 0;
+
+    if (getAdaptationInfoFromInfoMap(handle, info) == true) {
+        str_url = str_url_with_slot = info.url;
+        player_type = info.player_type;
+
+        if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO)) {
+            //audio_channel = getReadCntByDatabase(str_url);
+            m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+            m_logger->i("{}) {}:{} : UHD({})", TAG, __FUNCTION__, __LINE__, getPlayNgByDatabase(str_url));
+        } else if ((player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_VIDEO)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::RECORDING_PLAY)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::FACE_DETECTION)) ||
+                    (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::DVRS_REAR))) {
+            // MOOD_THERAPY_VIDEO and GOLF_VIDEO doesn't use audio source
+            use_audio_focus = false;
+            if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO)) {
+                m_logger->i("{}) {}:{} : enable APN", TAG, __FUNCTION__, __LINE__, handle);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+            }
+        } else if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MELON) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GENIE) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::XIMALAYA) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::PODBBANG) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_FUNAUDIO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO) ||
+                    player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIBE)) {
+            if (str_url.compare(0, 3, "(1)") == 0) { // APN change to default CCS
+                m_logger->i("{}) {}:{} : default APN", TAG, __FUNCTION__, __LINE__, handle);
+                str_url = str_url.substr(3);
+                str_url_with_slot = str_url;
+                setAPNDefaultStatusToInfoMap(handle, true);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+                //update info.url by removing (1)
+                setUrlToInfoMap(handle, str_url);
+            } else { // To enable APN change
+                m_logger->i("{}) {}:{} : enable APN", TAG, __FUNCTION__, __LINE__, handle);
+                isAPNChanged = true;
+                setAPNStatusToInfoMap(handle, true);
+            }
+
+            if (str_url.compare(0, 3, "(A)") == 0) { // To check Atmos streaming
+                m_logger->i("{}) {}:{} : Atmos streaming", TAG, __FUNCTION__, __LINE__, handle);
+                str_url = str_url.substr(3);
+                str_url_with_slot = str_url;
+                audio_channel = 6;
+                //update info.url by removing (A)
+                setUrlToInfoMap(handle, str_url);
+            }
+
+            if ((player_type == static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM) ||
+                 (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC)) )) {
+                setPlayerStatusToInfoMap(handle, ccos::media::HMediaPlayingState::UNINIT);
+            }
+        } else {
+            // None
+            m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+        }
+
+        // Set Audio Channel after checking whether the multi channel is supported or not.
+        if (!isMultiChannel || needDownmix) {
+            audio_channel = 2;
+        } else {
+            if (audio_channel > 0) {
+                // Do nothing
+            } else if ( player_type == static_cast<uint32_t>(PlayerTypes::MediaType::AUDIO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MANUAL_VIDEO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_AUDIO) ||
+                 player_type == static_cast<uint32_t>(PlayerTypes::MediaType::NATURE_SOUND) ) {
+                audio_channel = 0;
+            } else {
+                audio_channel = 2;
+            }
+        }
+
+        if ((mConnection != NULL) && use_audio_focus) {
+            int32_t retry = 3;
+            int16_t audio_ret = 0;
+            int16_t audio_slot = -1;
+            uint16_t audio_src_id = 0;
+            std::string volumeType = "";
+
+            volumeType = getVolumeTypeAndSrcId(player_type, &audio_src_id);
+            if (volumeType.size() == 0 && audio_src_id == 0) {
+                m_logger->e("{}) {}:{} : getVolumeTypeAndSrcId fail - type=[{}]",
+                            TAG, __FUNCTION__, __LINE__, player_type);
+                return -1;
+            }
+
+            do {
+                ret = g_dbus_connection_call_sync(mConnection, AM_SERVICE_NAME, AM_OBJECT_PATH, AM_INTERFACE_NAME,
+                                                  AM_REQ_GETSLOTAVAILABLE,
+                                                  g_variant_new ("(qq)", audio_src_id, 0x01), // 0x01 2ch TDM table
+                                                  G_VARIANT_TYPE_TUPLE,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &gError);
+                if (gError) {
+                    m_logger->e("{}) {}:{} : Error getting available slot", TAG, __FUNCTION__, __LINE__);
+                    g_error_free(gError);
+                    return -1;
+                }
+                if (ret) {
+                    g_variant_get(ret, "(nn)", &audio_ret, &audio_slot);
+                    m_logger->i("{}) {}:{} : ret=[{}], Available slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_ret, audio_slot);
+
+                    if ( audio_ret == 8 || (audio_slot < 0 || audio_slot > 0x09) ) {
+                        m_logger->e("{}) {}:{} : Error invalid slot~!!! ####", TAG, __FUNCTION__, __LINE__);
+                        retry--;
+                    } else {
+                        retry = 0;
+                        setAudioSlotToInfoMap(handle, audio_slot);
+                        std::string slotString = std::to_string(audio_slot);
+                        std::string slotBrace = "[]";
+
+                        slotBrace.insert(1, slotString);
+                        str_url_with_slot.insert(0, slotBrace);
+
+                        if (volumeType.size() > 1) {
+                            volumeType.replace(volumeType.size()-1, 1, slotString);
+                        }
+                    }
+                    g_variant_unref(ret);
+                    ret = NULL;
+                }
+            } while (retry > 0);
+
+            // audio_ret == 8(NON_EXISTENT)
+            if (audio_ret == 8 || audio_slot == -1) {
+                return -1;
+            }
+
+            if (isMultiChannel && (audio_channel != 2)) { // check 5.1ch slot available or not
+                ret = g_dbus_connection_call_sync(mConnection, AM_SERVICE_NAME, AM_OBJECT_PATH, AM_INTERFACE_NAME,
+                                                  AM_REQ_GETSLOTAVAILABLE,
+                                                  g_variant_new ("(qq)", audio_src_id, 0x02), // 0x02 5.1ch table
+                                                  G_VARIANT_TYPE_TUPLE,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &gError);
+                if (gError) {
+                    m_logger->e("{}) {}:{} : Error getting 5.1ch available slot", TAG, __FUNCTION__, __LINE__);
+                    g_error_free(gError);
+                    return -1;
+                }
+                if (ret) {
+                    g_variant_get(ret, "(nn)", &audio_ret, &audio_slot);
+                    m_logger->i("{}) {}:{} : ret=[{}], 5.1ch available slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_ret, audio_slot);
+
+                    if ( audio_ret == 8 || audio_slot < 0 ) {
+#ifndef USE_DOWNMIX
+                        m_logger->i("{}) {}:{} : 5.1ch slot is not available, use 2ch mode", TAG, __FUNCTION__, __LINE__);
+                        audio_channel = 2;
+#else
+                        m_logger->i("{}) {}:{} : 5.1ch slot is not available, but keep channel", TAG, __FUNCTION__, __LINE__);
+#endif
+                    }
+                    g_variant_unref(ret);
+                    ret = NULL;
+                } else {
+                    m_logger->e("{}) {}:{} : failed to get 5.1ch slot info", TAG, __FUNCTION__, __LINE__);
+                }
+            }
+        }
+    } else { // No-element
+        return -1;
+    }
+
+    if (isProxyConnectionAvailable()) {
+        PlayerTypes::MediaType media_type;
+
+        switch(player_type) {
+            case static_cast<uint32_t>(PlayerTypes::MediaType::AUDIO):
+                media_type = PlayerTypes::MediaType::AUDIO;
+                callInfo.timeout_ = 2500;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::VIDEO):
+                media_type = PlayerTypes::MediaType::VIDEO;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::NATURE_SOUND):
+                media_type = PlayerTypes::MediaType::NATURE_SOUND;
+                if (isFirstPlay) {
+                    callInfo.timeout_ = 6000;
+                    isFirstPlay = false;
+                } else {
+                    callInfo.timeout_ = 3000;
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM):
+                media_type = PlayerTypes::MediaType::KAOLAFM;
+                callInfo.timeout_ = 3000;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::KAOLAFM), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::MELON):
+                media_type = PlayerTypes::MediaType::MELON;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::MELON), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                      return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC):
+                media_type = PlayerTypes::MediaType::QQMUSIC;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::QQMUSIC), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::KAKAOI):
+                media_type = PlayerTypes::MediaType::KAKAOI;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::GENIE):
+                media_type = PlayerTypes::MediaType::GENIE;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::GENIE), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::XIMALAYA):
+                media_type = PlayerTypes::MediaType::XIMALAYA;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::XIMALAYA), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO):
+                media_type = PlayerTypes::MediaType::GOLF_VIDEO;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::GOLF_VIDEO), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::MANUAL_VIDEO):
+                media_type = PlayerTypes::MediaType::MANUAL_VIDEO;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::STREAM):
+                media_type = PlayerTypes::MediaType::STREAM;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_AUDIO):
+                media_type = PlayerTypes::MediaType::MOOD_THERAPY_AUDIO;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::MOOD_THERAPY_VIDEO):
+                media_type = PlayerTypes::MediaType::MOOD_THERAPY_VIDEO;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::KIDS_VIDEO):
+                media_type = PlayerTypes::MediaType::KIDS_VIDEO;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::RECORDING_PLAY):
+                media_type = PlayerTypes::MediaType::RECORDING_PLAY;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::PODBBANG):
+                media_type = PlayerTypes::MediaType::PODBBANG;
+                callInfo.timeout_ = 3000;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::PODBBANG), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::DVRS_FRONT):
+                media_type = PlayerTypes::MediaType::DVRS_FRONT;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::DVRS_REAR):
+                media_type = PlayerTypes::MediaType::DVRS_REAR;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::KAKAOI2):
+                media_type = PlayerTypes::MediaType::KAKAOI2;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::FACE_DETECTION):
+                media_type = PlayerTypes::MediaType::FACE_DETECTION;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::VIBE):
+                media_type = PlayerTypes::MediaType::VIBE;
+                callInfo.timeout_ = 3000;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::VIBE), true, handle)) {
+                        m_logger->i("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_FUNAUDIO):
+                media_type = PlayerTypes::MediaType::TENCENT_FUNAUDIO;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_FUNAUDIO), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO):
+                media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO):
+                media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING):
+                media_type = PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::KAKAOI3):
+                media_type = PlayerTypes::MediaType::KAKAOI3;
+                break;
+            case static_cast<uint32_t>(PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING):
+                media_type = PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING;
+                if(isAPNChanged == true) {
+                    std::lock_guard<std::mutex> lock(PERequestAPNChangeMutex);
+                    if (requestAPNChange(str_url, static_cast<uint32_t>(PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING), true, handle)) {
+                        m_logger->e("{}) {}:{} : APN is changed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                    } else {
+                        m_logger->e("{}) {}:{} : Chaning APN is failed, handle[{}]", TAG, __FUNCTION__, __LINE__, handle);
+                        return -2;
+                    }
+                }
+                break;
+            default:
+                m_logger->e("{}) {}:{} : Error-wrong player_type : handle({})", TAG, __FUNCTION__, __LINE__, handle);
+                return -1;
+        }
+
+        m_logger->i("{}:{} Setting media_type [{}]", __FUNCTION__, __LINE__, static_cast<uint32_t>(media_type));
+        if (setMediaType(handle, media_type) == true) {
+            playerProxy->openUri(str_url_with_slot, audio_channel, media_type, callStatus, error, media_id, &callInfo);
+            if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+                needRetry = true;
+            }
+
+            if (needRetry || media_id < 10) {
+                int retry = PLAYER_PROXY_CONNECT_RETRY_COUNT_SIMPLE;
+                do {
+                    m_logger->i("{}:{} Invalid media_id [{}], get by media type again", __FUNCTION__, __LINE__, media_id);
+                    usleep(10*PLAYER_PROXY_CONNECT_INTERVAL);
+                    playerProxy->getMediaIdByMediaType(media_type, callStatus, error, media_id);
+                    retry--;
+                } while (retry > 0 && media_id < 10);
+
+                needRetry = (retry <= 0) ? true : false;
+
+                if (needRetry) {
+                    /* To-do: Recovery code review */
+                    m_logger->e("{}) {}:{} : Command API dbus error, try force kill[{}] and retry", TAG, __FUNCTION__, __LINE__, media_id);
+                    playerProxy->stop(media_id, true, callStatus, error, &callInfo);
+                    playerProxy->openUri(str_url_with_slot, audio_channel, media_type, callStatus, error, media_id, &callInfo);
+                }
+            }
+        } else {
+            m_logger->e("{}) {}:{} : Failed to set media type",TAG, __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        /* Remove the map, if already exits */
+        (void)deleteHandleFromMediaIDMap(handle);
+        if (createHandleToMediaIDMap(handle, media_id, true) != true) {
+            m_logger->e("{}) {}:{} : Failed to create  type",TAG, __FUNCTION__, __LINE__);
+            return -1;
+        }
+    } else {
+        m_logger->e("{}) {}:{} : Command API connection error",TAG, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(condLoadLock);
+    isLoadFinished = true;
+    condLoadWait.notify_all();
+    return 0;
+}
+
+
+------------------------------------------------------------------------------------------------------>>>>>>>>>>>>>>
+
+
+
+Load method but only checks for USB_AUDIO / USB_VIDEO mediatype.
+
+int32_t PlayerEngineCCOSAdaptor::load(uint64_t handle, bool use_audio_focus, bool needDownmix) {
+    std::function<void(const CommonAPI::CallStatus&, uint64_t rhandle, const PlayerTypes::PlayerError&)> callback;
+
+    PlayerTypes::PlayerError error;
+    CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::INVALID_VALUE;
+    CommonAPI::CallInfo callInfo(2000);
+
+    GError *gError = NULL;
+    GVariant *ret = NULL;
+
+    PlayerEngineAdaptationInfo info;
+
+    std::string str_url = "";
+    std::string str_url_with_slot = "";
+
+    bool needRetry = false;
+    bool isAPNChanged = false;
+    int32_t audio_channel = 0;
+    uint32_t media_id = 0;
+    uint32_t player_type = 0;
+
+    if (getAdaptationInfoFromInfoMap(handle, info) == true) {
+        str_url = str_url_with_slot = info.url;
+        player_type = info.player_type;
+
+        if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_AUDIO) ||
+            player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_VIDEO)) {
+            if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_AUDIO)) {
+                //audio_channel = getReadCntByDatabase(str_url);
+                m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+                m_logger->i("{}) {}:{} : UHD({})", TAG, __FUNCTION__, __LINE__, getPlayNgByDatabase(str_url));
+            } else if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_VIDEO)) {
+                //audio_channel = getReadCntByDatabase(str_url);
+                m_logger->i("{}) {}:{} : channel info({}), 2ch_down=[{}]", TAG, __FUNCTION__, __LINE__, audio_channel, needDownmix);
+                m_logger->i("{}) {}:{} : UHD({})", TAG, __FUNCTION__, __LINE__, getPlayNgByDatabase(str_url));
+            }
+
+            if (mConnection!= NULL && use_audio_focus) {
+                int32_t retry = 3;
+                int16_t audio_ret = 0;
+                int16_t audio_slot = -1;
+                uint16_t audio_src_id = 0;
+                std::string volumeType = "";
+
+                volumeType = getVolumeTypeAndSrcId(player_type, &audio_src_id);
+                if (volumeType.size() == 0 && audio_src_id == 0) {
+                    m_logger->e("{}) {}:{} : getVolumeTypeAndSrcId fail - type=[{}]",
+                                TAG, __FUNCTION__, __LINE__, player_type);
+                    return -1;
+                }
+
+                do {
+                    ret = g_dbus_connection_call_sync(mConnection, AM_SERVICE_NAME, AM_OBJECT_PATH, AM_INTERFACE_NAME,
+                                                      AM_REQ_GETSLOTAVAILABLE,
+                                                      g_variant_new ("(qq)", audio_src_id, 0x01), // 0x01 2ch TDM table
+                                                      G_VARIANT_TYPE_TUPLE,
+                                                      G_DBUS_CALL_FLAGS_NONE,
+                                                      -1,
+                                                      NULL,
+                                                      &gError);
+                    if (gError) {
+                        m_logger->e("{}) {}:{} : Error getting available slot", TAG, __FUNCTION__, __LINE__);
+                        g_error_free(gError);
+                        return -1;
+                    }
+                    if (ret) {
+                        g_variant_get(ret, "(nn)", &audio_ret, &audio_slot);
+                        m_logger->i("{}) {}:{} : ret=[{}], Available slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_ret, audio_slot);
+
+                        if ( audio_ret == 8 || (audio_slot < 0 || audio_slot > 0x09) ) {
+                            m_logger->e("{}) {}:{} : Error invalid slot~!!! ####", TAG, __FUNCTION__, __LINE__);
+                            retry--;
+                        } else {
+                            retry = 0;
+                            setAudioSlotToInfoMap(handle, audio_slot);
+                            std::string slotString = std::to_string(audio_slot);
+                            std::string slotBrace = "[]";
+
+                            slotBrace.insert(1, slotString);
+                            str_url_with_slot.insert(0, slotBrace);
+
+                                                        if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_AUDIO)) {
+                                m_logger->i("{}) {}:{} : USB_AUDIO slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_slot);
+                            } else if (player_type == static_cast<uint32_t>(PlayerTypes::MediaType::USB_VIDEO)) {
+                                m_logger->i("{}) {}:{} : USB_VIDEO slot=[{}]", TAG, __FUNCTION__, __LINE__, audio_slot);
+                            }
+                        }
+                    } else {
+                        m_logger->e("{}) {}:{} : Error getting available slot", TAG, __FUNCTION__, __LINE__);
+                        return -1;
+                    }
+                    g_variant_unref(ret);
+                } while (retry > 0);
+            }
+
+            if (isProxyConnectionAvailable()) {
+                m_logger->i("{}:{} Setting media_type [{}]", __FUNCTION__, __LINE__, static_cast<uint32_t>(player_type));
+                if (setMediaType(handle, player_type) == true) {
+                    playerProxy->openUri(str_url_with_slot, audio_channel, player_type, callStatus, error, media_id, &callInfo);
+                    if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+                        needRetry = true;
+                    }
+
+                    if (needRetry || media_id < 10) {
+                        int retry = PLAYER_PROXY_CONNECT_RETRY_COUNT_SIMPLE;
+                        do {
+                            m_logger->i("{}:{} Invalid media_id [{}], get by media type again", __FUNCTION__, __LINE__, media_id);
+                            usleep(10*PLAYER_PROXY_CONNECT_INTERVAL);
+                            playerProxy->getMediaIdByMediaType(player_type, callStatus, error, media_id);
+                            retry--;
+                        } while (retry > 0 && media_id < 10);
+
+                        needRetry = (retry <= 0) ? true : false;
+
+                        if (needRetry) {
+                            /* To-do: Recovery code review */
+                            m_logger->e("{}) {}:{} : Command API dbus error, try force kill[{}] and retry", TAG, __FUNCTION__, __LINE__, media_id);
+                            playerProxy->stop(media_id, true, callStatus, error, &callInfo);
+                            playerProxy->openUri(str_url_with_slot, audio_channel, player_type, callStatus, error, media_id, &callInfo);
+                        }
+                    }
+                } else {
+                    m_logger->e("{}) {}:{} : Failed to set media type",TAG, __FUNCTION__, __LINE__);
+                    return -1;
+                }
+
+                /* Remove the map, if already exits */
+                (void)deleteHandleFromMediaIDMap(handle);
+                if (createHandleToMediaIDMap(handle, media_id, true) != true) {
+                    m_logger->e("{}) {}:{} : Failed to create  type",TAG, __FUNCTION__, __LINE__);
+                    return -1;
+                }
+            } else {
+                m_logger->e("{}) {}:{} : Command API connection error",TAG, __FUNCTION__, __LINE__);
+                return -1;
+            }
+        } else {
+            m_logger->e("{}) {}:{} : Not supported media type",TAG, __FUNCTION__, __LINE__);
+            return -1;
+        }
+    } else {
+        m_logger->e("{}) {}:{} : No-element",TAG, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    std::lock_guard<std::mutex> lock(condLoadLock);
+    isLoadFinished = true;
+    condLoadWait.notify_all();
+    return 0;
+}
+
+-------------------------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>>>.
+
+,,,,,,,,,,,,,,,,,,,,,,,,		
+bool PlayerEngineCCOSAdaptor::setMediaType(uint64_t handle, PlayerTypes::MediaType media_type) {
+    PlayerTypes::MediaType response;
+    PlayerEngineAdaptationInfo info;
+    CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::INVALID_VALUE;
+    CommonAPI::CallInfo callInfo(1000);
+
+    if (getAdaptationInfoFromInfoMap(handle, info) == true) {
+        if (setPlayerTypeToInfoMap(handle, static_cast<uint32_t>(media_type))) {
+            playerProxy->getMediaTypeAttribute().setValue(media_type, callStatus, response, &callInfo);
+            if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+                m_logger->e("{}) {} : setMediaType fail - m_type=[{}]" ,TAG, __FUNCTION__, media_type);
+                return false;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+
+HResult HMediaPlayer::Impl::setMediaType(HMediaPlayerType type)
+{
+    PlayerTypes::MediaType media_type;
+    PlayerEngineCCOSAdaptor *Adaptor = PlayerEngineCCOSAdaptor::getInstance();
+
+    switch(type){
+        case HMediaPlayerType::AUDIO_LOCAL_USBMUSIC:
+            media_type = PlayerTypes::MediaType::AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_USBVIDEO:
+            media_type = PlayerTypes::MediaType::VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_NATURE_SOUND:
+            media_type = PlayerTypes::MediaType::NATURE_SOUND;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAOLAFM:
+            media_type = PlayerTypes::MediaType::KAOLAFM;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_MELON:
+            media_type = PlayerTypes::MediaType::MELON;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_QQMUSIC:
+            media_type = PlayerTypes::MediaType::QQMUSIC;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI:
+            media_type = PlayerTypes::MediaType::KAKAOI;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENIE:
+            media_type = PlayerTypes::MediaType::GENIE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_XIMALAYA:
+            media_type = PlayerTypes::MediaType::XIMALAYA;
+            break;
+        case HMediaPlayerType::VIDEO_MOVING_PICTURE_MANUAL:
+            media_type = PlayerTypes::MediaType::MANUAL_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING:
+            media_type = PlayerTypes::MediaType::GOLF_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_LOCAL_MOOD_THERAPY:
+            media_type = PlayerTypes::MediaType::MOOD_THERAPY_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_KIDS_CARE_MODE:
+            media_type = PlayerTypes::MediaType::KIDS_VIDEO;
+            break;
+        case HMediaPlayerType::VIDEO_RECORDING_PLAY:
+            media_type = PlayerTypes::MediaType::RECORDING_PLAY;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_PODBBANG:
+            media_type = PlayerTypes::MediaType::PODBBANG;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_FRONT:
+            media_type = PlayerTypes::MediaType::DVRS_FRONT;
+            break;
+        case HMediaPlayerType::VIDEO_DVRS_REAR:
+            media_type = PlayerTypes::MediaType::DVRS_REAR;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI2:
+            media_type = PlayerTypes::MediaType::KAKAOI2;
+            break;
+        case HMediaPlayerType::AUDIO_FACE_DETECTION:
+            media_type = PlayerTypes::MediaType::FACE_DETECTION;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_VIBE:
+            media_type = PlayerTypes::MediaType::VIBE;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_AIQUTING:
+            media_type = PlayerTypes::MediaType::TENCENT_FUNAUDIO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_AUDIO;
+            break;
+        case HMediaPlayerType::VIDEO_STREAMING_TENCENT_MINI_APP:
+            media_type = PlayerTypes::MediaType::TENCENT_MINI_APP_VIDEO;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_WELAAA:
+            media_type = PlayerTypes::MediaType::WELAAA_AUDIO_STREAMING;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_KAKAOI3:
+            media_type = PlayerTypes::MediaType::KAKAOI3;
+            break;
+        case HMediaPlayerType::AUDIO_STREAMING_GENESIS_MUSIC:
+            media_type = PlayerTypes::MediaType::GENESIS_AUDIO_STREAMING;
+            break;
+        default:
+            return HResult::INVALID;
+    }
+
+    if(Adaptor->setMediaType(getHandle(),media_type)){
+        return HResult::OK;
+    }
+
+    return HResult::ERROR;
+}
+
+
+-->The setMediaType method is called in this code snippet, which is the same method that was mentioned in the second code snippet.
+   Specifically, the line if (setMediaType(handle, player_type) == true) calls the setMediaType method, which is part of the HMediaPlayer::Impl class. 
+   This method returns a boolean value indicating whether the media type was set successfully.
+
+		setMediaType(handle, player_type) → returns true if media type is set successfully, false otherwise
+
+
+-->The setMediaType method is used to set the media type based on the player_type enum value. This is similar to the first code snippet,
+   where the media type is set based on the handle value using a switch statement.
+
+		setMediaType method (in HMediaPlayer::Impl class) → sets media type based on player_type enum value
+
+-->The PlayerEngineCCOSAdaptor class is used in this code snippet, which is the same class that was mentioned in the second code snippet. 
+   Specifically, the playerProxy object is an instance of PlayerEngineCCOSAdaptor, and it is used to call methods such as openUri and getMediaIdByMediaType.
+
+		playerProxy->openUri(str_url_with_slot, audio_channel, player_type, callStatus, error, media_id, &callInfo) → returns void
+
+		playerProxy->getMediaIdByMediaType(player_type, callStatus, error, media_id) → returns void
+
+
+  In summary, the connection between this code snippet and the previous two code snippets is that they all deal with setting the media type and interacting 
+with the PlayerEngineCCOSAdaptor class. The setMediaType method is a key part of this interaction, and it is used to set the media type based on the input parameters.
+The PlayerEngineCCOSAdaptor class provides methods such as openUri and getMediaIdByMediaType that are used to interact with the media player.
+
+
+------------------------------------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>>
+
+the PlayerEngineCCOSAdaptor class wraps around the HMediaPlayer class, it's likely that the HMediaPlayer class is used 
+internally by the PlayerEngineCCOSAdaptor class to implement some of its methods
+
+
+
++---------------+
+| PlayerEngineCCOSAdaptor |
+|  (wraps HMediaPlayer)  |
++---------------+
+       |
+       |
+       v
++---------------+
+|  HMediaPlayer  |
+|  (internal instance)  |
++---------------+
+
+-------------------------------------------------------------------------------------------------------------->>>>>>>>>>>>>>>>>>
+
+
+more detailed explanation of the PlayerEngineCCOSAdaptor::load method for USB_AUDIO, including the calls involved:
+
+Step 1: Setting media type and audio channel
+
+mediaType is set to PlayerTypes::MediaType::AUDIO, indicating that the media content is an audio file.
+audioChannel is set to 2, which means the audio is in stereo format (left and right channels).
+
+
+Step 2: Checking audio focus and setting audio slot
+
+getSlotAvailable() is called to check if the audio focus is available.
+If the audio focus is available, audioSlot is set to the available value.
+If the audio focus is not available, an error is returned.
+
+
+Step 3: Constructing the URL with audio slot
+
+str_url_with_slot is constructed by appending the audioSlot to the original URL.
+For example, if the original URL is file:///mnt/usb/audio.mp3 and the audioSlot is 1, the str_url_with_slot would be file:///mnt/usb/audio.mp3?slot=1.
+
+
+Step 4: Opening the URI
+
+openUri() is called with the following parameters:
+str_url_with_slot: the URL with the audio slot information
+audioChannel: the audio channel (2 for stereo)
+mediaType: the media type (PlayerTypes::MediaType::AUDIO)
+openUri() performs the following steps:
+createPlayerInstance() is called to create a new player instance.
+setMediaType() is called to set the media type to PlayerTypes::MediaType::AUDIO.
+setAudioChannel() is called to set the audio channel to 2 (stereo).
+open() is called to open the URL and prepare the media content for playback.
+
+
+Step 5: Getting the media ID
+
+getMediaIdByMediaType() is called to get the media ID associated with the mediaType (PlayerTypes::MediaType::AUDIO).
+This method returns a unique media ID for the audio content.
+
+
+Step 6: Creating a map between the handle and media ID
+
+createHandleToMediaIDMap() is called to create a map between the handle and the media_id.
+This map is used to associate the handle with the corresponding media ID, which is necessary for managing the media playback.
+
+
+Here's a summary of the calls involved:
+
+getSlotAvailable()
+openUri(str_url_with_slot, audioChannel, mediaType)
+createPlayerInstance()
+setMediaType(mediaType)
+setAudioChannel(audioChannel)
+open()
+getMediaIdByMediaType(mediaType)
+createHandleToMediaIDMap(handle, media_id)
+By following these steps, the PlayerEngineCCOSAdaptor::load method ensures that the USB_AUDIO media content is properly loaded and prepared for playback.
+
+--------------------------------------------------------------------------------------------------->>>>>>>>>>>>>>
+
+
+Playerstub.cpp
+
+
+
+void PlayerStubImpl::openUri(const std::shared_ptr<CommonAPI::ClientId> _client,
+                             std::string _uri, uint32_t _channels, MM::PlayerTypes::MediaType _type, openUriReply_t _reply) {
+    MMLogInfo("load contents.. channels=[%u]", _channels);
+    int mediaId = 0;
+    int retCnt = 10;
+    std::string connectionName;
+    MM::PlayerTypes::MediaType currentType = _type; // GENSIX-71219 : prevent timing issue
+    if (currentType == MM::PlayerTypes::MediaType::AUDIO) { // Local USB audio
+        mediaId = default_media_id;
+        checkValidMediaId();
+        connectionName = playerenginemanager_->getDefaultConnectionName();
+        if(!connectionName.empty() && default_media_id > 0) {
+            MMLogInfo("connection name = %s received for default", connectionName.c_str());
+            player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+            playerenginemanager_->printMap();
+        } else {
+            MMLogInfo("Invalid connection name(null) received for default - restoring connection[%d]", default_media_id);
+            if (default_media_id <= 0) {
+                playerenginemanager_->createPlayerEngine();
+                default_media_id = playerenginemanager_->getPID();
+                connectionName = playerenginemanager_->getConnectionName();
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(default_media_id, connectionName)) {
+                    MMLogInfo("Duplicated connection name is detected.. retry getConnection");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                }
+
+                if (default_media_id <= 0 || connectionName.empty()) {
+                    MMLogError("Fail to restore");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                mediaId = default_media_id;
+                player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+                playerenginemanager_->printMap();
+            } else {
+                MMLogError("Engine is restored by main.cpp, but not started yet");
+                max_pe_instance_++;
+                do {
+                    retCnt--;
+                    usleep(20 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                    if (!connectionName.empty() && playerenginemanager_->checkValidConnectionName(default_media_id, connectionName)) {
+                        player_->clean_connection_ = playerenginemanager_->insertDefaultMediaId(default_media_id, connectionName);
+                        playerenginemanager_->printMap();
+                        break;
+                    }
+                } while (retCnt > 0);
+            }
+        }
+    } else {
+        if (map_media_id_.find(currentType) == map_media_id_.end()) {
+            MMLogInfo("New type is requested... need to check. type=[%d]", static_cast<int32_t>(currentType));
+            map_media_id_[currentType] = 0;
+        }
+        MMLogInfo("Creating PE for multi instance, type=[%d], saved_id=[%u], pe_cnt=[%d]",
+                  static_cast<int32_t>(currentType), map_media_id_[currentType], max_pe_instance_);
+        checkValidMediaId();
+
+        if (map_media_id_[currentType] > 0) {
+            mediaId = map_media_id_[currentType];
+            if ((playerenginemanager_->getConnectionName(mediaId)).empty()) {
+                MMLogInfo("There is no connection name in map. id=[%d]", mediaId);
+                connectionName = playerenginemanager_->getConnectionName();
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogWarn("Fail to get valid ConnectionName.. Try again..");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = 
+                    
+                    w
+                    manager_->getConnectionName();
+                }
+                if (retCnt > 0) {
+            
+                      manager_->insertMediaId(mediaId, connectionName);
+                } else {
+                    MMLogError("Fail to get connection name.");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+            }
+        } else {
+            if (max_pe_instance_ <= MAX_PLAYER_ENGINE_INSTANCE) {
+                max_pe_instance_++;
+                playerenginemanager_->createPlayerEngine();
+                mediaId = playerenginemanager_->getPID();
+                map_media_id_[currentType] = mediaId;
+
+                connectionName = playerenginemanager_->getConnectionName();
+                retCnt = 20; // Timeout 2s -> 4s
+                while (retCnt > 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogInfo("Duplicated connection name is detected.. retry getConnection");
+                    retCnt--;
+                    usleep(100 * 1000);
+                    connectionName = playerenginemanager_->getConnectionName();
+                }
+
+                if (retCnt == 0 && !playerenginemanager_->checkValidConnectionName(mediaId, connectionName)) {
+                    MMLogWarn("Fail to get ConnectionName.. player-engine is not started yet.");
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                if (mediaId <= 0 || connectionName.empty()) {
+                    MMLogInfo("Invalid values received for map: connection name = %s media ID = %d", connectionName.c_str(), mediaId);
+                    _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+                    return;
+                }
+                playerenginemanager_->insertMediaId(mediaId, connectionName);
+                MMLogInfo("Pass the connection name=[%s / %d] to playerprovider", connectionName.c_str(), mediaId);
+            } else {
+                MMLogError("Max number of PE already created...");
+                _reply(MM::PlayerTypes::PlayerError::MEDIA_MANAGER_INTERNAL_ERROR, 0);
+               return;
+            }
+        }
+        
+        manager_->printMap();
+        connectionName = playerenginemanager_->getConnectionName(mediaId);
+    }
+    MMLogInfo("Create openUri command=[%s / %d] to playerprovider", connectionName.c_str(), mediaId);
+default:
+            if (_reply) {
+            _reply(MM::PlayerTypes::PlayerError::NO_ERROR, mediaId);
+            _reply = NULL;
+            }
+            break;
+    }
+    command::BaseCommand* command = new (std::nothrow) command::OpenUriCommand(player_, 0, _uri, _type, true, (playerenginemanager_->connectionMap), mediaId, _channels, connectionName, _reply);
+    if (!command) {
+        MMLogError("failed to allocate for OpenUriCommand");
+    } else {
+        command->from_hmi = true;
+        command_queue_->Post(command);
+    }
+
+
