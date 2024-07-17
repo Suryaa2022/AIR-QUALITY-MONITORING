@@ -1,0 +1,50 @@
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include <mutex>
+
+int childThread(std::mutex& mtx, int& result, int num1, int num2) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 10 seconds
+    result = num1 + num2;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> execution_time = end_time - start_time;
+    std::cout << "Child thread execution time: " << execution_time.count() << " sec" << std::endl;
+    return 0;
+}
+
+int main() {
+    int num1, num2;
+
+    std::cout << "Enter the first number: ";
+    std::cin >> num1;
+
+    std::cout << "Enter the second number: ";
+    std::cin >> num2;
+
+    std::cout << "Main thread" << std::endl;
+
+    int result;
+    std::mutex mtx;
+    std::thread child(childThread, std::ref(mtx), std::ref(result), num1, num2);
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    bool timeout = false;
+    for (int i = 0; i < 12; ++i) {
+        std::this_thread::sleep_for(std::chrono::seconds(1)); // Check every 1 second
+        if (child.joinable()) {
+            child.join(); // Join the thread to get the result
+            timeout = false;
+            break;
+        }
+    }
+
+    if (timeout) {
+        std::cout << "Child thread timed out. No result available." << std::endl;
+    } else {
+        std::lock_guard<std::mutex> lock(mtx);
+        std::cout << "The sum of " << num1 << " and " << num2 << " is " << result << std::endl;
+    }
+
+    return 0;
+}
