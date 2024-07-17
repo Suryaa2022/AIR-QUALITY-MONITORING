@@ -1,0 +1,36 @@
+#include <iostream>
+#include <thread>
+#include <future>
+#include <chrono>
+
+int childThread(int num1, int num2) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Sleep for 10 milliseconds
+    int result = num1 + num2;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> execution_time = end_time - start_time;
+    std::cout << "Child thread execution time: " << execution_time.count() << " sec" << std::endl;
+    return result;
+}
+
+int main() {
+    int num1, num2;
+
+    std::cout << "Enter the first number: ";
+    std::cin >> num1;
+
+    std::cout << "Enter the second number: ";
+    std::cin >> num2;
+
+    std::cout << "Main thread" << std::endl; 
+    std::future<int> result = std::async(std::launch::async, childThread, num1, num2);;
+
+    if (result.wait_for(std::chrono::seconds(12)) == std::future_status::timeout) {
+        std::cout << " Child thread took more than 10 sec to execute." << std::endl;
+    } else {
+        int sum = result.get();
+        std::cout << "The sum of " << num1 << " and " << num2 << " is " << sum << std::endl;
+    }
+
+    return 0;
+}
