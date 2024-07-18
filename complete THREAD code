@@ -1,0 +1,50 @@
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+// Shared data and flag
+bool result_ready = false;
+int result;
+
+void add(int num1, int num2) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    std::this_thread::sleep_for(std::chrono::seconds(10)); // Simulate work with a delay
+    result = num1 + num2;
+    result_ready = true; // Indicate that the result is ready
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> execution_time = end_time - start_time;
+    std::cout << "Child thread execution time: " << execution_time.count() << " sec" << std::endl;
+}
+
+int main() {
+    int num1, num2;
+
+    std::cout << "Enter the first number: ";
+    std::cin >> num1;
+
+    std::cout << "Enter the second number: ";
+    std::cin >> num2;
+
+    std::cout << "Main thread" << std::endl;
+    std::thread t(add, num1, num2); // Create a child thread to execute the add function
+
+    auto start_time = std::chrono::steady_clock::now();
+    auto timeout_duration = std::chrono::seconds(12);
+
+    // Busy-wait loop with a timeout of 12 seconds
+    while (!result_ready) {
+        if (std::chrono::steady_clock::now() - start_time > timeout_duration) {
+            std::cout << "Child thread took more than 12 sec to execute." << std::endl;
+            if (t.joinable()) {
+                t.join(); // Ensure the child thread completes execution before exiting main
+            }
+            return 0;
+        }
+    }
+
+    std::cout << "The sum of " << num1 << " and " << num2 << " is " << result << std::endl;
+
+    if (t.joinable()) {
+        t.join(); // Ensure the child thread completes execution before exiting main
+    }
+    return 0;
