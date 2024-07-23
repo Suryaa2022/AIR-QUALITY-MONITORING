@@ -15,3 +15,6 @@ Error: GStreamer error: state change failed and some element failed to post a pr
 
 (video_resolution:2296885): GLib-CRITICAL **: 09:33:53.262: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
 
+
+file:///home/lg/work/SURYA/256x128to2560x1280_issue_dashinit.mp4: No such file or directory
+
