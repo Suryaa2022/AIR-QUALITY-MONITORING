@@ -18,3 +18,16 @@ Error: GStreamer error: state change failed and some element failed to post a pr
 
 file:///home/lg/work/SURYA/256x128to2560x1280_issue_dashinit.mp4: No such file or directory
 
+
+
+(notify_resolution:2299516): GLib-GObject-WARNING **: 11:07:01.500: g_object_set_is_valid_property: object class 'GstAutoVideoSink' has no property named 'emit-signals'
+
+(notify_resolution:2299516): GLib-GObject-WARNING **: 11:07:01.501: ../../../gobject/gsignal.c:2613: signal 'new-sample' is invalid for instance '0x5a52cf967030' of type 'GstAutoVideoSink'
+Setting pipeline to PLAYING...
+Running...
+End of stream
+
+(notify_resolution:2299516): GLib-CRITICAL **: 11:11:01.838: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
+
+
+
