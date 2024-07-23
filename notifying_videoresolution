@@ -1,0 +1,276 @@
+#include <iostream>
+#include <gst/gst.h>
+#include <gst/video/video.h>
+#include <glib.h>
+struct AppData {
+   gint last_width = 0;
+   gint last_height = 0;
+};
+static gboolean on_message(GstBus *bus, GstMessage *msg, gpointer data) {
+   GMainLoop *loop = (GMainLoop *)data;
+   switch (GST_MESSAGE_TYPE(msg)) {
+       case GST_MESSAGE_EOS:
+           g_print("End of stream\n");
+           g_main_loop_quit(loop);
+           break;
+       case GST_MESSAGE_ERROR: {
+           gchar *debug;
+           GError *error;
+           gst_message_parse_error(msg, &error, &debug);
+           g_free(debug);
+           g_print("Error: %s\n", error->message);
+           g_error_free(error);
+           g_main_loop_quit(loop);
+           break;
+       }
+       default:
+           break;
+   }
+   return TRUE;
+}
+static GstPadProbeReturn check_caps(GstPad *pad, GstPadProbeInfo *info, gpointer data) {
+   AppData *app_data = (AppData *)data;
+   GstCaps *caps = gst_pad_get_current_caps(pad);
+   if (!caps) return GST_PAD_PROBE_OK;
+   GstStructure *s = gst_caps_get_structure(caps, 0);
+   gint width, height;
+   if (gst_structure_get_int(s, "width", &width) &&
+       gst_structure_get_int(s, "height", &height)) {
+       if (width != app_data->last_width || height != app_data->last_height) {
+           GstElement *pipeline = GST_ELEMENT_PARENT(pad);
+           gint64 current_time = 0;
+           gst_element_query_position(pipeline, GST_FORMAT_TIME, &current_time);
+           g_print("Playback time: %ld seconds\n", GST_TIME_AS_SECONDS(current_time));
+           g_print("Video resolution changed to %dx%d\n", width, height);
+           app_data->last_width = width;
+           app_data->last_height = height;
+       }
+   }
+   gst_caps_unref(caps);
+   return GST_PAD_PROBE_OK;
+}
+static void on_pad_added(GstElement *element, GstPad *pad, GstElement *sink) {
+   GstPad *sink_pad = gst_element_get_static_pad(sink, "sink");
+   if (gst_pad_is_linked(sink_pad)) {
+       g_object_unref(sink_pad);
+       return;
+   }
+   if (gst_pad_link(pad, sink_pad) != GST_PAD_LINK_OK) {
+       g_printerr("Failed to link pads\n");
+   }
+   gst_object_unref(sink_pad);
+}
+int main(int argc, char *argv[]) {
+   GstElement *pipeline, *source, *decodebin, *videoconvert, *videosink;
+   GstBus *bus;
+   GMainLoop *loop;
+   AppData app_data;
+   gst_init(&argc, &argv);
+   if (argc != 2) {
+       g_printerr("Usage: %s <file>\n", argv[0]);
+       return -1;
+   }
+   pipeline = gst_pipeline_new("video-pipeline");
+   source = gst_element_factory_make("filesrc", "file-source");
+   decodebin = gst_element_factory_make("decodebin", "decoder");
+   videoconvert = gst_element_factory_make("videoconvert", "converter");
+   videosink = gst_element_factory_make("autovideosink", "video-output");
+   if (!pipeline || !source || !decodebin || !videoconvert || !videosink) {
+       g_printerr("Not all elements could be created.\n");
+       return -1;
+   }
+   g_object_set(source, "location", argv[1], NULL);
+   gst_bin_add_many(GST_BIN(pipeline), source, decodebin, videoconvert, videosink, NULL);
+   gst_element_link(source, decodebin);
+   gst_element_link(videoconvert, videosink);
+   g_signal_connect(decodebin, "pad-added", G_CALLBACK(on_pad_added), videoconvert);
+   GstPad *video_pad = gst_element_get_static_pad(videoconvert, "sink");
+   gst_pad_add_probe(video_pad, GST_PAD_PROBE_TYPE_BUFFER, check_caps, &app_data, NULL);
+   gst_object_unref(video_pad);
+   bus = gst_element_get_bus(pipeline);
+   gst_bus_add_watch(bus, on_message, loop);
+   gst_object_unref(bus);
+   loop = g_main_loop_new(NULL, FALSE);
+   g_print("Setting pipeline to PLAYING...\n");
+   gst_element_set_state(pipeline, GST_STATE_PLAYING);
+   g_print("Running...\n");
+   g_main_loop_run(loop);
+   g_print("Stopping...\n");
+   gst_element_set_state(pipeline, GST_STATE_NULL);
+   gst_object_unref(pipeline);
+   g_main_loop_unref(loop);
+   return 0;
+}
+
+
+
+Explanation :
+
+
+The program initializes GStreamer and creates a new pipeline.
+
+It creates elements for file source, decodebin, videoconvert, and autovideosink.
+
+It sets the file location for the file source element and adds all elements to the pipeline.
+
+It links the elements together.
+
+It connects the pad-added signal of the decodebin to the on_pad_added function.
+
+It adds a probe to the video pad of the videoconvert element to call the check_caps function.
+
+It gets the bus from the pipeline and adds a watch to it to call the on_message function.
+
+It sets the pipeline to playing state.
+
+The pipeline starts playing, and buffers are pushed through the video pad.
+
+The check_caps function is called for each buffer, which checks the video resolution and prints a message if it changes.
+
+The on_message function is called for each message on the bus, which handles EOS and error messages.
+
+The main loop runs until the pipeline is stopped or an error occurs.
+
+The pipeline is stopped, and the program exits.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+WHAT DOES PROBES DO ?
+
+
+1. Buffer arrives at the video pad
+
+When a buffer arrives at the video pad of the videoconvert element, the probe function check_caps is called.
+
+2. Probe function is called
+
+The check_caps function is called with the following arguments:
+
+pad: The video pad of the videoconvert element
+info: A GstPadProbeInfo structure containing information about the buffer
+data: A pointer to the app_data structure
+
+3. Retrieve caps from the pad
+
+The check_caps function retrieves the current caps (capabilities) of the pad using the gst_pad_get_current_caps function.
+
+4. Get the first structure from the caps
+
+The function gets the first structure from the caps using the gst_caps_get_structure function.
+
+5. Retrieve width and height from the structure
+
+The function retrieves the width and height values from the structure using the gst_structure_get_int function.
+
+6. Check if resolution has changed
+
+The function checks if the width and height values have changed by comparing them with the previously stored values in the app_data structure.
+
+7. Print message if resolution has changed
+
+If the resolution has changed, the function prints a message to the console indicating the new resolution.
+
+8. Update app_data structure
+
+The function updates the app_data structure with the new width and height values.
+
+9. Return GST_PAD_PROBE_OK
+
+The function returns GST_PAD_PROBE_OK to indicate that the probe was successful.
+
+10. Buffer continues downstream
+
+The buffer continues downstream through the pipeline, and the probe function is called again for the next buffer.
+
+By using a probe function, the program can inspect and react to the buffers flowing through the pipeline without modifying the underlying elements or pipeline. 
+This allows for flexible and efficient processing of the video stream.
+
+===========================================================================================================================================================
+
+GST_CAPS_GET_STRUCTURE :
+
+gst_caps_get_structure is a function in the GStreamer library that retrieves a structure from a GstCaps object
+
+A GstStructure is a container for key-value pairs, where the keys are strings and the values can be of various types (e.g., integers, strings, arrays, etc.).
+
+
+
+
+=========================================================================================================================================================
+
+GST_STRUCTURE_GET_INT FUNCTION:
+
+the gst_structure_get_int function is called twice, once for the width key and once for the height key. The function takes three arguments:
+
+   --> The structure to retrieve the value from, the key to retrieve, and a pointer to a variable to store the value
+
+The gst_structure_get_int function returns TRUE if the key was found and the value was successfully retrieved, and FALSE otherwise. 
+By using the && operator, we ensure that both the width and height values are retrieved successfully 
+
+========================================================================================================================================================================
+
+
+Without connecting the pad-added signal, the pipeline will not run correctly.
+
+Here's what will happen:
+
+The decodebin element will create pads dynamically based on the media file being played.
+The pads will not be automatically linked to the next element in the pipeline (e.g., videoconvert).
+The decoded video stream will not be properly connected to the rest of the pipeline.
+The pipeline will not produce any output, and you may see errors or warnings indicating that the pads are not linked.
+In other words, without connecting the pad-added signal, the pipeline will not be able to properly decode and display the video stream.
+
+=====================================================================================================================================================
+
+Line 1:
+
+
+GstPad *video_pad = gst_element_get_static_pad(videoconvert, "sink");
+
+Here, we're getting a reference to a GstPad object from a GstElement object called videoconvert. Specifically, we're asking for the "sink" pad of the element.
+
+In GStreamer, a GstElement is a component that performs a specific function in a pipeline, such as decoding, encoding, or converting video. 
+A GstPad is a connection point on an element where data can flow in or out. Pads can be either "sink" pads (where data flows in) or "source" pads (where data flows out).
+
+The gst_element_get_static_pad() function returns a GstPad object that is a static pad of the element, meaning it's a pad that is always present on the 
+element and doesn't change dynamically. The "sink" string specifies that we want the sink pad of the element.
+
+
+Line 2:
+
+gst_pad_add_probe(video_pad, GST_PAD_PROBE_TYPE_BUFFER, check_caps, &app_data, NULL);
+
+
+Here, we're adding a probe to the video_pad we just obtained. A probe is a callback function that gets called whenever a specific event occurs on the pad.
+
+In this case, we're adding a probe of type GST_PAD_PROBE_TYPE_BUFFER, which means the callback function will be called whenever a buffer (i.e., a chunk of data)
+is pushed onto the pad.
+
+The callback function is check_caps, which will be called with the following arguments:
+
+video_pad: the pad that triggered the probe
+
+&app_data: a pointer to some application-specific data (we'll get to this later)
+
+NULL: an optional argument that can be used to pass additional data to the callback function (in this case, it's not used)
+
+The check_caps function will be called whenever a buffer is pushed onto the video_pad. This allows us to inspect the buffer and perform some action
+based on its contents.
+
+
+Line 3:
+
+gst_object_unref(video_pad);
+
+
+Finally, we're releasing the reference to the video_pad object using gst_object_unref().
+This is important because gst_element_get_static_pad() returns a new reference to the pad, and we need to release it when we're done using it to avoid memory leaks.
+
+The app_data pointer: The &app_data pointer is passed as an argument to the check_caps callback function. This allows us to pass some application-specific data to the 
+callback function, which can be useful for storing context or state that's relevant to the probe.
+
+In this case, app_data is likely a struct or object that contains some data that's relevant to the application, such as configuration settings or cached values. 
+The check_caps function can access this data using the &app_data pointer.
+
+Overall, this code snippet is setting up a probe on the sink pad of a videoconvert element to inspect the buffers that are pushed onto the pad. 
+The check_caps callback function will be called whenever a buffer is pushed onto the pad, allowing us to perform some action based on the buffer's contents.
