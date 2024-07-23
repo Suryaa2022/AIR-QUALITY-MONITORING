@@ -1,1 +1,17 @@
 errors
+
+Setting pipeline to PLAYING...
+Running...
+Error: Resource not found.
+
+(video_resolution:2296885): GLib-CRITICAL **: 09:33:53.262: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
+Error: GStreamer error: state change failed and some element failed to post a proper error message with the reason for the failure.
+
+(video_resolution:2296885): GLib-CRITICAL **: 09:33:53.262: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
+Error: Resource not found.
+
+(video_resolution:2296885): GLib-CRITICAL **: 09:33:53.262: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
+Error: GStreamer error: state change failed and some element failed to post a proper error message with the reason for the failure.
+
+(video_resolution:2296885): GLib-CRITICAL **: 09:33:53.262: g_main_loop_quit: assertion 'g_atomic_int_get (&loop->ref_count) > 0' failed
+
