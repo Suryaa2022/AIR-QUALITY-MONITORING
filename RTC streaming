@@ -23,3 +23,13 @@ STREAMING.cpp: In function ‘void on_message(GstBus*, GstMessage*, gpointer)’
 STREAMING.cpp:52:47: error: ‘GST_MESSAGE_ERROR’ cannot be used as a function
    52 |       g_print("Error: %s\n", GST_MESSAGE_ERROR(msg));
       |                              ~~~~~~~~~~~~~~~~~^~~~~
+
+-------------------------------------------------------------------------------
+
+stream.cpp: In function ‘int main(int, char**)’:
+stream.cpp:22:13: error: expected ‘}’ at end of input
+   22 |    return 0;
+      |             ^
+stream.cpp:9:34: note: to match this ‘{’
+    9 | int main(int argc, char *argv[]) {
+      |                                  
