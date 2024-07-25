@@ -47,3 +47,383 @@ In file included from /usr/include/gstreamer-1.0/gst/webrtc/webrtc.h:24,
 stream.cpp:(.text+0x72): undefined reference to `gst_webrtc_session_description_get_type'
 /usr/bin/ld: stream.cpp:(.text+0xd6): undefined reference to `gst_webrtc_session_description_free'
 collect2: error: ld returned 1 exit status
+
+========================================================================================================================
+  
+            rtsp_streamer.cpp
+
+============================================================================================================================
+
+#include <gst/gst.h>
+#include <gst/rtsp/rtsp.h>
+
+int main(int argc, char *argv[]) {
+  // Initialize GStreamer
+  gst_init(&argc, &argv);
+
+  // Create a new pipeline
+  GstElement *pipeline = gst_pipeline_new("rtsp-pipeline");
+
+  // Create a video test source
+  GstElement *source = gst_element_factory_make("videotestsrc", "source");
+  g_object_set(source, "pattern", 0, NULL); // Set the pattern to 0 (black)
+
+  // Create an H.264 encoder
+  GstElement *encoder = gst_element_factory_make("x264enc", "encoder");
+  g_object_set(encoder, "tune", 0x00000004, NULL); // Set the tune to zerolatency
+
+  // Create an RTSP payloader
+  GstElement *payloader = gst_element_factory_make("rtph264pay", "payloader");
+
+  // Create an RTSP sink
+  GstElement *sink = gst_element_factory_make("filesink", "sink");
+  g_object_set(sink, "location", "output.mp4", NULL); // Set the output file
+
+  // Create an RTSP depayloader
+  GstElement *depayloader = gst_element_factory_make("rtph264depay", "depayloader");
+
+  // Create a parser
+  GstElement *parser = gst_element_factory_make("h264parse", "parser");
+
+  // Create a muxer
+  GstElement *muxer = gst_element_factory_make("mp4mux", "muxer");
+
+  // Add elements to the pipeline
+  gst_bin_add_many(GST_BIN(pipeline), source, encoder, payloader, depayloader, parser, muxer, sink, NULL);
+
+  // Link elements
+  gst_element_link(source, encoder);
+  gst_element_link(encoder, payloader);
+  gst_element_link(payloader, depayloader);
+  gst_element_link(depayloader, parser);
+  gst_element_link(parser, muxer);
+  gst_element_link(muxer, sink);
+
+  // Set the pipeline to playing
+  gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+  // Wait for the pipeline to finish
+  gst_element_get_state(pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+
+  // Clean up
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+
+  return 0;
+}
+
+===============================================================================================================================================
+stream.cpp
+
+========================================================================================================================================
+
+#include <gst/gst.h>
+
+typedef struct _CustomData {
+    GMainLoop *loop;
+    gboolean is_live;
+} CustomData;
+
+static gboolean cb_message(GstBus *bus, GstMessage *message, gpointer user_data) {
+    CustomData *data = (CustomData *)user_data;
+
+    switch (GST_MESSAGE_TYPE(message)) {
+        case GST_MESSAGE_ERROR:
+            GError *err;
+            gchar *debug_info;
+
+            gst_message_parse_error(message, &err, &debug_info);
+            g_printerr("Error: %s\n", err->message);
+            g_error_free(err);
+            g_free(debug_info);
+
+            g_main_loop_quit(data->loop);
+            break;
+
+        case GST_MESSAGE_EOS:
+            g_main_loop_quit(data->loop);
+            break;
+
+        default:
+            break;
+    }
+
+    return TRUE;
+}
+
+int main(int argc, char *argv[]) {
+    GstElement *pipeline;
+    GstBus *bus;
+    GstStateChangeReturn ret;
+    GMainLoop *main_loop;
+    CustomData data;
+
+    // Initialize GStreamer
+    gst_init(&argc, &argv);
+
+    // Initialize our data structure
+    memset(&data, 0, sizeof(data));
+
+    // Build the pipeline
+    pipeline = gst_parse_launch("videotestsrc ! videoconvert ! x264enc tune=zerolatency ! mpegtsmux ! hlssink playlist-root=http://10.221.38.141:5000 playlist-location=playlist.m3u8 location=segment_%05d.ts target-duration=1 max-files=4", NULL);
+    if (!pipeline) {
+        g_printerr("Failed to create pipeline\n");
+        return -1;
+    }
+
+    bus = gst_element_get_bus(pipeline);
+    if (!bus) {
+        g_printerr("Failed to get bus from pipeline\n");
+        gst_object_unref(pipeline);
+        return -1;
+    }
+
+    // Set up the message callback
+    gst_bus_add_signal_watch(bus);
+    g_signal_connect(bus, "message", G_CALLBACK(cb_message), &data);
+
+    // Start playing
+    ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("Unable to set the pipeline to the playing state.\n");
+        gst_object_unref(bus);
+        gst_object_unref(pipeline);
+        return -1;
+    } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
+        data.is_live = TRUE;
+    }
+
+    main_loop = g_main_loop_new(NULL, FALSE);
+    if (!main_loop) {
+        g_printerr("Failed to create main loop\n");
+        gst_object_unref(bus);
+        gst_object_unref(pipeline);
+        return -1;
+    }
+
+    data.loop = main_loop;
+
+    // Run the main loop
+    g_main_loop_run(main_loop);
+
+    // Clean up
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(bus);
+    gst_object_unref(pipeline);
+    g_main_loop_unref(main_loop);
+
+    return 0;
+}
+===========================================================================================================================================
+
+STREAMING.cpp
+
+===========================================================================================================================================
+
+#include <gst/gst.h>
+#include <gst/video/video.h>
+#include <gst/audio/audio.h>
+
+#define GST_RTSP_LOWER_TRANS 1
+
+int main(int argc, char *argv[]) {
+  // Initialize GStreamer
+  gst_init(&argc, &argv);
+
+  // Create the pipeline
+  GstPipeline *pipeline = gst_pipeline_new("rtc-pipeline");
+
+  // Create the video source
+  GstElement *video_source = gst_element_factory_make("v4l2src", "video-source");
+  g_object_set(video_source, "device", "/dev/video0", NULL);
+  gst_bin_add(GST_BIN(pipeline), video_source);
+
+  // Create the video converter
+  GstElement *video_converter = gst_element_factory_make("videoconvert", "video-converter");
+  gst_bin_add(GST_BIN(pipeline), video_converter);
+
+  // Create the video encoder
+  GstElement *video_encoder = gst_element_factory_make("x264enc", "video-encoder");
+  g_object_set(video_encoder, "tune", 0x00000004, NULL); // zerolatency
+  gst_bin_add(GST_BIN(pipeline), video_encoder);
+
+  // Create the RTP video payloader
+  GstElement *video_payloader = gst_element_factory_make("rtph264pay", "video-payloader");
+  gst_bin_add(GST_BIN(pipeline), video_payloader);
+
+  // Create the audio source
+  GstElement *audio_source = gst_element_factory_make("audiosrc", "audio-source");
+  gst_bin_add(GST_BIN(pipeline), audio_source);
+
+  // Create the audio converter
+  GstElement *audio_converter = gst_element_factory_make("audioconvert", "audio-converter");
+  gst_bin_add(GST_BIN(pipeline), audio_converter);
+
+  // Create the audio encoder
+  GstElement *audio_encoder = gst_element_factory_make("opusenc", "audio-encoder");
+  gst_bin_add(GST_BIN(pipeline), audio_encoder);
+
+  // Create the RTP audio payloader
+  GstElement *audio_payloader = gst_element_factory_make("rtpopuspay", "audio-payloader");
+  gst_bin_add(GST_BIN(pipeline), audio_payloader);
+
+  // Create the UDP sink
+  GstElement *udp_sink = gst_element_factory_make("udpsink", "udp-sink");
+  g_object_set(udp_sink, "host", "127.0.0.1", "port", 5000, NULL);
+  gst_bin_add(GST_BIN(pipeline), udp_sink);
+
+  // Link the elements
+  gst_element_link(video_source, video_converter);
+  gst_element_link(video_converter, video_encoder);
+  gst_element_link(video_encoder, video_payloader);
+  gst_element_link(video_payloader, udp_sink);
+  gst_element_link(audio_source, audio_converter);
+  gst_element_link(audio_converter, audio_encoder);
+  gst_element_link(audio_encoder, audio_payloader);
+  gst_element_link(audio_payloader, udp_sink);
+
+  // Set the pipeline to playing
+  gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+  // Wait for the pipeline to finish
+  gst_element_get_state(pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+
+  // Clean up
+  gst_element_set_state(pipeline, GST_STATE_NULL);
+  gst_object_unref(pipeline);
+
+  return 0;
+}
+
+===================================================================================================================================================
+
+RTSP.cpp
+
+#include <gst/gst.h>
+
+int main(int argc, char *argv[]) {
+    GstElement *pipeline, *source, *videoconvert, *x264enc, *mpegtsmux, *rtspSink;
+    GstBus *bus;
+    GstMessage *msg;
+
+    // Initialize GStreamer
+    gst_init(&argc, &argv);
+
+    // Create the pipeline
+    pipeline = gst_pipeline_new("rtsp-server-pipeline");
+
+    // Create elements
+    source = gst_element_factory_make("videotestsrc", "source");
+    videoconvert = gst_element_factory_make("videoconvert", "videoconvert");
+    x264enc = gst_element_factory_make("x264enc", "x264enc");
+    mpegtsmux = gst_element_factory_make("mpegtsmux", "mpegtsmux");
+    rtspSink = gst_element_factory_make("rtspclientsink", "rtspSink");
+
+    // Set properties
+    g_object_set(G_OBJECT(rtspSink), "location", "rtsp://localhost:8554/test", NULL);
+    g_object_set(G_OBJECT(rtspSink), "debug", TRUE, NULL); // Enable debug logging
+
+    // Add elements to the pipeline
+    gst_bin_add_many(GST_BIN(pipeline), source, videoconvert, x264enc, mpegtsmux, rtspSink, NULL);
+
+    // Link elements
+    if (!gst_element_link_many(source, videoconvert, x264enc, mpegtsmux, rtspSink, NULL)) {
+        g_printerr("Failed to link elements\n");
+        return -1;
+    }
+
+    // Set the pipeline to the PLAYING state
+    GstStateChangeReturn ret = gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("Failed to set pipeline to PLAYING state\n");
+        return -1;
+    }
+
+    // Check the pipeline state
+    GstState state;
+    ret = gst_element_get_state((GstElement*)pipeline, &state, NULL, GST_CLOCK_TIME_NONE);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("Failed to get pipeline state\n");
+        return -1;
+    }
+    if (state != GST_STATE_PLAYING) {
+        g_printerr("Pipeline not in PLAYING state\n");
+        return -1;
+    }
+
+    // Check for errors on the bus
+    bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
+    while ((msg = gst_bus_poll(bus, GST_MESSAGE_ERROR, 0))) {
+        GError *err;
+        gchar *debug_info;
+        gst_message_parse_error(msg, &err, &debug_info);
+        g_printerr("Error: %s\n", err->message);
+        g_error_free(err);
+        g_free(debug_info);
+        gst_message_unref(msg);
+    }
+
+    // Wait for the pipeline to finish
+    gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
+
+    // Clean up
+    gst_object_unref(GST_OBJECT(pipeline));
+    return 0;
+}
+=====================================================================================================================================================
+
+
+
+#include <gst/gst.h>
+#include <glib.h>
+
+int main(int argc, char** argv) {
+    // Initialize GStreamer
+    gst_init(&argc, &argv);
+
+    // Create a pipeline
+    GstElement* pipeline = gst_pipeline_new("pipeline");
+
+    // Create a udpsrc element
+    GstElement* udpsrc = gst_element_factory_make("udpsrc", "udpsrc");
+    g_object_set(udpsrc, "port", 5000, NULL);
+
+    // Create a videoconvert element
+    GstElement* videoconvert = gst_element_factory_make("videoconvert", "videoconvert");
+
+    // Create a videoscale element
+    GstElement* videoscale = gst_element_factory_make("videoscale", "videoscale");
+
+    // Create a x264enc element
+    GstElement* x264enc = gst_element_factory_make("x264enc", "x264enc");
+
+    // Create a mpegtsmux element
+    GstElement* mpegtsmux = gst_element_factory_make("mpegtsmux", "mpegtsmux");
+
+    // Create a udpsink element
+    GstElement* udpsink = gst_element_factory_make("udpsink", "udpsink");
+    g_object_set(udpsink, "host", "10.221.38.141", "port", 5001, NULL);
+
+    // Add elements to the pipeline
+    gst_bin_add_many(GST_BIN(pipeline), udpsrc, videoconvert, videoscale, x264enc, mpegtsmux, udpsink, NULL);
+
+    // Link elements
+    gst_element_link_many(udpsrc, videoconvert, videoscale, x264enc, mpegtsmux, udpsink, NULL);
+
+    // Set the pipeline to playing
+    gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
+
+    // Create a main loop
+    GMainLoop* loop = g_main_loop_new(NULL, FALSE);
+
+    // Run the main loop
+    g_main_loop_run(loop);
+
+    // Clean up
+    gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
+    gst_object_unref(GST_OBJECT(pipeline));
+    g_main_loop_unref(loop);
+
+    return 0;
+}
+
