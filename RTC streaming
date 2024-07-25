@@ -33,3 +33,17 @@ stream.cpp:22:13: error: expected ‘}’ at end of input
 stream.cpp:9:34: note: to match this ‘{’
     9 | int main(int argc, char *argv[]) {
       |                                  
+-----------------------------------------------------------------------------
+
+In file included from /usr/include/gstreamer-1.0/gst/webrtc/webrtc.h:24,
+                 from stream.cpp:2:
+/usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:24:2: warning: #warning "The WebRTC library from gst-plugins-bad is unstable API and may change in future." [-Wcpp]
+   24 | #warning "The WebRTC library from gst-plugins-bad is unstable API and may change in future."
+      |  ^~~~~~~
+/usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:25:2: warning: #warning "You can define GST_USE_UNSTABLE_API to avoid this warning." [-Wcpp]
+   25 | #warning "You can define GST_USE_UNSTABLE_API to avoid this warning."
+      |  ^~~~~~~
+/usr/bin/ld: /tmp/ccslu7qd.o: in function `on_offer_created(_GstPromise*, void*)':
+stream.cpp:(.text+0x72): undefined reference to `gst_webrtc_session_description_get_type'
+/usr/bin/ld: stream.cpp:(.text+0xd6): undefined reference to `gst_webrtc_session_description_free'
+collect2: error: ld returned 1 exit status
