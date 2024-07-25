@@ -5,3 +5,21 @@ In file included from /usr/include/gstreamer-1.0/gst/webrtc/webrtc.h:24,
       |  ^~~~~~~
 /usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:25:2: warning: #warning "You can define GST_USE_UNSTABLE_API to avoid this warning." [-Wcpp]
    25 | #warning "You can define GST_USE_UNSTABLE_API to avoid this warning."
+
+
+-------------------------------------------------------------------------------
+
+STREAMING.cpp: In function ‘int main(int, char**)’:
+STREAMING.cpp:37:47: error: ‘on_message’ was not declared in this scope; did you mean ‘g_message’?
+   37 |   g_signal_connect(bus, "message", G_CALLBACK(on_message), NULL);
+      |                                               ^~~~~~~~~~
+/usr/include/glib-2.0/gobject/gsignal.h:508:60: note: in definition of macro ‘g_signal_connect’
+  508 |     g_signal_connect_data ((instance), (detailed_signal), (c_handler), (data), NULL, (GConnectFlags) 0)
+      |                                                            ^~~~~~~~~
+STREAMING.cpp:37:36: note: in expansion of macro ‘G_CALLBACK’
+   37 |   g_signal_connect(bus, "message", G_CALLBACK(on_message), NULL);
+      |                                    ^~~~~~~~~~
+STREAMING.cpp: In function ‘void on_message(GstBus*, GstMessage*, gpointer)’:
+STREAMING.cpp:52:47: error: ‘GST_MESSAGE_ERROR’ cannot be used as a function
+   52 |       g_print("Error: %s\n", GST_MESSAGE_ERROR(msg));
+      |                              ~~~~~~~~~~~~~~~~~^~~~~
