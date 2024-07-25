@@ -1,0 +1,7 @@
+In file included from /usr/include/gstreamer-1.0/gst/webrtc/webrtc.h:24,
+                 from stream.cpp:2:
+/usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:24:2: warning: #warning "The WebRTC library from gst-plugins-bad is unstable API and may change in future." [-Wcpp]
+   24 | #warning "The WebRTC library from gst-plugins-bad is unstable API and may change in future."
+      |  ^~~~~~~
+/usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:25:2: warning: #warning "You can define GST_USE_UNSTABLE_API to avoid this warning." [-Wcpp]
+   25 | #warning "You can define GST_USE_UNSTABLE_API to avoid this warning."
