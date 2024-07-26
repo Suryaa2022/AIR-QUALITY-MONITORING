@@ -447,6 +447,15 @@ target     prot opt source               destination
 Chain OUTPUT (policy ACCEPT)
 target     prot opt source               destination
 lg@si-core:~/surya/tutorial/TASK$ sudo iptables -A INPUT -p udp --dport 5000 -j ACCEPT
+
+=============================================================================================================================
+
+lg@si-core:~/surya/tutorial/TASK$ GST_DEBUG=3 ./gst_streamer
+0:00:00.012636117 2592098 0x5672ffc5c380 WARN                 basesrc gstbasesrc.c:3688:gst_base_src_start_complete:<filesrc0> pad not activated yet
+Streaming on udp://10.221.38.141:5000
+0:00:00.015917536 2592098 0x5672ffc4d760 WARN                 qtdemux qtdemux.c:3121:qtdemux_parse_trex:<qtdemux0> failed to find fragment defaults for stream 1
+0:00:00.016021489 2592098 0x5672ffc4d760 WARN                 qtdemux qtdemux.c:3121:qtdemux_parse_trex:<qtdemux0> failed to find fragment defaults for stream 2
+
 lg@si-core:~/surya/tutorial/TASK$ sudo iptables-save > /etc/iptables/rules.v4
 -bash: /etc/iptables/rules.v4: No such file or directory
 
