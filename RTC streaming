@@ -466,3 +466,14 @@ Streaming on udp://127.0.0.1:5000
 
 
 
+==========================================================================================================================
+
+Board details
+
+Analyzing file:///rw_data/media/usb/front/BE5A48EE5A48A4CD/WORKING_MP4/resize.mp4
+nvlog: Failed to allocate shared memory for nvlog global object: Permission denied
+Done discovering file:///rw_data/media/usb/front/BE5A48EE5A48A4CD/WORKING_MP4/resize.mp4
+
+
+
+
