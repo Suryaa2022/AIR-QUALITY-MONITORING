@@ -1,3 +1,4 @@
+
 In file included from /usr/include/gstreamer-1.0/gst/webrtc/webrtc.h:24,
                  from stream.cpp:2:
 /usr/include/gstreamer-1.0/gst/webrtc/webrtc_fwd.h:24:2: warning: #warning "The WebRTC library from gst-plugins-bad is unstable API and may change in future." [-Wcpp]
@@ -432,4 +433,21 @@ int main(int argc, char** argv) {
 file:///home/lg/Desktop/ALL_MEDIA/MP4/resize.mp4
 
 ===========================================================================================================================
+
+
+lg@si-core:~/surya/tutorial/TASK$ sudo iptables -L
+
+[sudo] password for lg:
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+lg@si-core:~/surya/tutorial/TASK$ sudo iptables -A INPUT -p udp --dport 5000 -j ACCEPT
+lg@si-core:~/surya/tutorial/TASK$ sudo iptables-save > /etc/iptables/rules.v4
+-bash: /etc/iptables/rules.v4: No such file or directory
+
 
