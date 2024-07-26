@@ -459,4 +459,10 @@ Streaming on udp://10.221.38.141:5000
 lg@si-core:~/surya/tutorial/TASK$ sudo iptables-save > /etc/iptables/rules.v4
 -bash: /etc/iptables/rules.v4: No such file or directory
 
+===============================================================================================================================
+
+Streaming on udp://127.0.0.1:5000
+0:00:00.012874599 2592178 0x634aabea9f60 FIXME                default gstutils.c:4025:gst_pad_create_stream_id_internal:<videotestsrc0:src> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
+
+
 
