@@ -1,0 +1,485 @@
+IGNORE-REASON
+
+
+TYPE:Dereference null return value
+
+The issue reported concerns the dereference of a null pointer which is return value from get_hkmc_options() function.The function get_hkmc_options() checks if 
+this->hkmc_options  is null and if so initializes it with a valid std::shared_ptr instance. It ensures that get_hkmc_options() always return a valid shared_ptr  
+and hence it doesnot cause an issue in this scenario. Hence, we request to ignore the issue.
+
+========================================================================================================================>>>
+
+
+TYPE:Uncaught exception
+
+The function VisualOnPipeline::Rewind(gdouble rate) involves calling ControlPlaybackRate(rate) and then event_->NotifyEventTrickPlaying(). The reported exception, 
+boost::property_tree::ptree_bad_data, relates to issues in Boost's ptree during JSON conversion. However, NotifyEventTrickPlaying() constructs a JSON object with a 
+simple key-value pair where the key is kKeyTrickPlaying and the value is an empty string (""). This format conforms to the expected JSON structure of key-value pairs,
+where the key is a string and the value is either a string, number, or boolean and hence does not lead to any exception. Therefore, we request an exception for this 
+issue.
+
+
+========================================================================================================================>>>
+
+
+TYPE:overly broad exception catch
+
+The function media::browser::MediaFileIterator::read_directory_iter catches exceptions using std::exception const &.Handling specific exceptions within this context 
+could lead to incomplete error handling, as it may not cover all possible failure scenarios. By using a broad exception catch, the function ensures that any
+unexpected errors are caught and logged,This approach helps to manage errors in a controlled manner.Therefore, despite the broadness of the catch, 
+this method ensures robust error handling. Hence, we request an exception for this issue.
+
+
+=========================================================================================================================>>>
+
+TYPE:Overflowed constant
+
+The function _close_fds returns a value that might be less than zero, and this value is used in subsequent arithmetic operations. Although static analysis flags
+potential overflow concerns, the return values are managed within a controlled scope. In this context, the possibility of overflow is does not affect the 
+overall functionality. Therefore, this issue does not lead to a significant risk, Hence we request an exception for this issue.
+
+
+In the function PlayerEngineCCOSAdaptor::load(unsigned long, bool, bool), the expression volumeType.size() - 1UL results in an integer overflow because 
+volumeType.size() is 0,causing the operation to underflow and produce the maximum value for an unsigned 64-bit integer, 18446744073709551615.
+The specific case where volumeType.size() is 0 and the expression results in an overflow is not causing any runtime issues due to the nature of the operation.
+However, this overflow does not affect the runtime behavior or correctness of the function. Therefore, we request an exception for this issue.	
+
+==========================================================================================================================>>>
+
+
+TYPE:Data race condition
+
+The function PlayerEngineCCOSAdaptor::obtainPlayerContext accesses StatusIter->second.Listener without holding the lock PlayerEngineCCOSAdaptor::PlayerListenerInfo.m.  
+This is flagged as a potential data race condition because PlayerListenerInfo.Listener is correctly protected with PlayerListenerInfo.m in other parts of the code.
+Here it does not modify PlayerListenerInfo.Listener but only reads its value.Since PlayerListenerInfo.Listener is not being written to, the absence of the lock does 
+not cause data race issues for this specific read operation.Hence we request an exception for this issue.
+
+
+=============================================================================================================================>>>
+
+TYPE:Unchecked return value
+
+The function VisualOnPipeline::DecBinPaddAddedCallbackInternal calls gst_pad_link to link pads but does not check its return value. While similar checks are present 
+elsewhere in the code, the absence of this check in this instance does not impact functionality. If gst_pad_link() fails, it results in the pad not being linked, but 
+this does not affect the subsequent operations like gst_object_unref() and gst_caps_unref(), which continue regardless of the linking result. Therefore, the lack of 
+return value checks in this specific context does not impact the overall functionality of the code. Hence, we request an exception for this issue.
+
+============================================================================================================================>>>
+
+TYPE:Uninitialized pointer field
+
+
+The constructor for DltLogger does not explicitly initialize the non-static class members context_.log_level_pos, context_.log_level_ptr, context_.trace_status_ptr, 
+and context_.mcnt. These members are pointers or integer values that are expected to be properly initialized or assigned a default value in the scope of their use. 
+However,the absence of explicit initialization is not problematic because the pointers are either assigned valid values or set to nullptr before they are accessed.
+Therefore, the absence of explicit initialization does not lead any issues and hence we request an exception for this issue.
+
+
+In the media::impl::playlist_base<media::audio> class, the uninitialized pointer field issue arises.The fields flagged in the issue are not raw pointers but rather are instances 
+of boost::optional<int>, rxcpp::subjects::subject<>, and std::shared_ptr<>Therefore, since these fields are not raw pointers and are managed by their respective types, 
+the reported issue does not apply. We request an exception for this issue.
+
+==============================================================================================================================>>>
+
+TYPE:Unused value
+
+In the function PlayerEngineCCOSAdaptor::load(unsigned long, bool, bool), the variable ret is initially assigned NULL. However, this value is subsequently overwritten 
+by another assignment before ret is used. The current implementation of the function does not use the ret variable in a way that relies on its initial NULL assignment. 
+As such, the fact that NULL is overwritten before use does not affect the correctness or performance of the function.Therefore,we request an exception for this issue.
+
+================================================================================================================================>>>
+
+TYPE:Use of auto that causes a copy
+
+The function CheckAudioCodec uses the auto keyword in a range-based for loop to iterate over info.audio_. This causes a copy of each MediaFileAudioInfo object to be 
+made. Although using const auto& would be more efficient by avoiding unnecessary copies, the current implementation does not affect the correctness of the function. 
+The copied objects are used only for read operations and are not modified. Given that the overhead of copying in this specific context  does not lead to any functional
+issues.Therefore we request an exception for this issue.
+
+
+using auto without a reference (&) for the variable mountPoint can lead to unnecessary copying of a std::string object and that mountPoint is a non-const variable even though 
+it is never modified.In this specific case, the objects being copied are std::string.The lambda function uses const auto& for zipped, which ensures that zipped is not 
+copied but passed by reference. Therefore, the copying issue reported does not apply to zipped itself.Given that the lambda function operates on const auto& and 
+mountPoint is not modified, the reported issues do not significantly affect performance or correctness. We request an exception for this issue 
+
+===============================================================================================================================>>>
+
+TYPE:Variable copied when it could be moved
+
+
+The issue involves creating copying of the variable instead of using std::move. However, the variables are passed as parameters to functions that do not 
+retain ownership of them and the performance impact of copying versus moving is effectively the same in this scenario.Therefore, the current implementation does not lead in a 
+significant performance drawback. Hence we request an exception for this issue.
+
+
+
+14306315
+
+std::shared_ptr constructor 
+
+The issue involves creating copying of the variable instead of using std::move. However, the variables are passed as parameter to std::shared_ptr constructor that do not 
+retain ownership of them and the performance impact of copying versus moving is effectively the same in this scenario.Therefore, the current implementation does not lead in a 
+significant performance drawback. Hence we request an exception for this issue.
+
+
+The issue involves creating copying of the variable instead of using std::move. However,the variables are passed as parameters to the std::shared_ptr constructor, 
+which manages shared ownership semantics. In this context, copying a shared_ptr correctly increments the reference count without retaining ownership of the original 
+pointer.Therefore, the current implementation does not lead in a significant performance drawback. Hence we request an exception for this issue.
+
+
+
+14306618
+
+std::string constructor
+
+The issue involves creating copying of the variable instead of using std::move. However, the variables are passed as parameter to std::string constructor that do not 
+retain ownership of them and the performance impact of copying versus moving is effectively the same in this scenario.Therefore, the current implementation does not lead in a 
+significant performance drawback. Hence we request an exception for this issue.
+
+
+14306652
+
+std::vector constructor 
+
+The issue involves creating copying of the variable instead of using std::move. However, the variables are passed as parameter to std::vector constructor that do not 
+retain ownership of them and the performance impact of copying versus moving is effectively the same in this scenario.Therefore, the current implementation does not lead in a 
+significant performance drawback. Hence we request an exception for this issue.
+
+================================================================================================================================>>>
+
+TYPE:do not call
+
+
+The function uses realloc() to adjust the size of the description buffer, which stores pointers to dynamically allocated strings. While best practices in secure 
+coding suggest avoiding realloc() for buffers with sensitive data due to associated security risks, this implementation incorporates thorough error handling. 
+Specifically, if realloc() fails, it logs an error and returns NULL, thus preserving the integrity of the original buffer. These ensure that sensitive 
+data remains secure. Therefore, the use of realloc() in this context is considered acceptable. Thereforre we request an exception for this issue.
+
+==================================================================================================================================>>>
+
+TYPE:Use of 32-bit time_t
+
+
+The current code uses std::chrono::time_point<std::chrono::steady_clock> for time measurements, which is not directly related to the time_t data type typically 
+associated with the Y2K38 issue. The use of std::chrono ensures that we are not using the traditional time_t type and avoids issues related to 32-bit integer overflow 
+in time calculations.Therefore, the concern about time_t being defined with only 32 bits does not apply in this context.Hence ,we request an exception for this issue
+
+===================================================================================================================================>>>
+
+TYPE:Double unlock
+
+
+The issue reported involves a double unlock with std::unique_lock in the push method. The unlock call is used to release the lock before notifying 
+the condition variable, and this does not lead to a re-locking of the mutex. The std::unique_lock is designed to handle the mutex's lock state correctly, and the 
+unlock operation is appropriately managed. Given that the mutex is not incorrectly re-acquired and the functionality remains unaffected.Therefore, we request an 
+exception for this issue.
+
+======================================================================================================================================>>>
+
+TYPE:Exposed non-const static field
+
+
+The PlayerStubImpl class has a public static field default_media_id of type int. While the general practice is to avoid exposing non-const static fields due to 
+potential issues with encapsulation and uncontrolled modifications, in this case, default_media_id is managed in a manner that aligns with the class's design. The 
+use of this field is intentional and controlled within the class context, which reduces potential risks associated with its exposure.Therefore, the specific use
+of this field justified in this context. Hence, we request an exception for this issue
+
+
+======================================================================================================================================>>>
+
+TYPE:Use of untrusted string value
+
+
+The function call SetEnv is used to set an environment variable GST_DEBUG_DUMP_DOT_DIR with the value from gst_debug_dump_dot_dir. Although this value may come 
+from an external or untrusted source, gst_debug_dump_dot_dir is internally controlled and sanitized by the application to ensure it contains only safe and permissible 
+characters. Therefore, there are no security concerns with this operation in this context, and we request an exception for this issue.
+
+=====================================================================================================================================>>>
+
+
+PLAYER-ENGINE (450)
+
+
+TYPE: do not call :1
+
+TYPE: Variable copied when it move :115
+
+TYPE: Use of untrusted string :1
+
+TYPE: Use of auto that causes :1
+
+TYPE: Uninitialized pointer field :1
+
+TYPE: Unchecked return value : 7
+
+TYPE: Uncaught exception : 313
+
+TYPE: Dereference null return : 4 (6)->already done
+
+TYPE: Data race condition : 1
+
+
+=============================================================================================================================================>>>
+
+THUMBNAIL-EXTRACTOR (45)
+
+
+TYPE: Variable copied when it move : 22
+
+TYPE: Use of 32-bit time_t : 3
+
+TYPE: Unitialized pointer filed : 1
+
+TYPE: Unchecked return value : 8
+
+TYPE: Uncaught exception : 2
+
+TYPE: Overly broad exception : 4
+
+TYPE: Overflowed return value : 1
+
+TYPE: Double unlock : 2
+
+TYPE: Dereference null return : 2
+
+================================================================================================================================================>>
+
+MEDIA-MANAGER
+
+
+TYPE: Do not call : 1
+
+TYPE: Variable copied when it could be move : 204
+
+TYPE: Use of auto that causes : 2
+
+TYPE: Uninitialized pointer : 6
+
+TYPE: Unchecked return value : 22
+
+TYPE: Uncaught exception : 19
+
+TYPE: Overly broad exception : 2
+
+TYPE: Exposed non-const static : 2
+
+TYPE: Missing Unlock : 2
+
+
+=======================================================================================================>>
+
+
+Uninitialized pointer field
+
+14301229
+14303608
+
+
+The issue involves the lack of explicit initialization for non-static class members within the class. While these members are expected to be properly initialized or 
+assigned default values within their respective scopes, the absence of explicit initialization is not problematic in this context.Because,The pointers are either 
+assigned valid values or set to nullptr before they are accessed. Therefore, this absence of explicit initialization does not lead to any issues, and we request 
+an exception for these reported issues.
+
+=======================================================================================================>>
+
+Uninitalized pointer field
+
+
+The issue involves to the lack of explicit initialization for non-static class members within the class. While these members are expected to be properly initialized 
+or assigned default values, they are accessed using the this pointer within their respective scopes. In this context, the absence of explicit initialization is not 
+problematic. Furthermore, that the this pointer implies the members should be accessible and managed correctly within the scope of the instance, which helps prevent
+potential dereferencing of uninitialized pointers.Therefore, the lack of explicit initialization does not lead to any functional issues in this scenario. Hence, we 
+request an exception for this reported issue.
+
+
+============================================================================================================>>
+
+Uninitialized pointer
+
+
+The issue involves the lack of explicit initialization for non-static class members within the class. While these members are expected to be properly initialized or 
+assigned default values, they are accessed using the this pointer within their respective scopes. In a class, when a non-static member function is defined,
+
+
+
+The issue involves the lack of explicit initialization for a non-static class member within the class. While this member is expected to be properly initialized or 
+assigned a default value, it is accessed within the scope of a lambda function using the this pointer
+
+
+
+the C++ 
+compiler automatically provides a special pointer called this that refers to the object invoking the member function. This pointer is implicitly available, allowing 
+direct access to the member variables and functions of the instance without needing to declare or pass it explicitly. Furthermore, that the this pointer implies the 
+members should be accessible and managed correctly within the scope of the instance, which helps preventpotential dereferencing of uninitialized pointers.
+Therefore, the lack of explicit initialization does not lead to any functional issues in this scenario. Hence, we request an exception for this reported issue.
+
+
+
+=============================================================================================================>>
+
+
+Lambda function
+
+The issue involves a lambda function capturing non-static class members from the surrounding context, including a reported uninitialized member. While this member is 
+not explicitly initialized in the constructor or any called functions, it is expected to be valid by the time the lambda is executed. Given the controlled execution 
+context and the absence of any access to this member before it is guaranteed to be initialized, we believe that this does not lead to any undefined behavior. 
+Therefore, we request an exception for this reported issue.
+
+=====================================================================================================================================================>>>
+
+Dereferencing Null pointer
+
+HMedia
+
+CID 13707656 (#1 of 1): Dereference null return value (NULL_RETURNS)
+6. dereference: Attempting to access the managed object of an empty smart pointer list_provider.
+
+
+Media-browser
+
+CID 13740851 (#1 of 1): Dereference null return value (NULL_RETURNS)
+4. dereference: Attempting to access the managed object of an empty smart pointer <temporary>
+
+
+
+Player-engine
+
+
+CID 14301267 (#1 of 1): Dereference null return value (NULL_RETURNS)
+4. dereference: Dereferencing paramv, which is known to be NULL.
+
+   	
+CID 14303531 (#1 of 1): Dereference null return value (NULL_RETURNS)
+3. dereference: Dereferencing block, which is known to be nullptr.
+
+---------------------------------------->>
+
+CID 13828444 (#1 of 1): Dereference null return value (NULL_RETURNS)
+3. dereference: Dereferencing a pointer that might be nullptr temp when calling parser_util_regex_replace. [hide details]
+
+
+335  temp = parser_util_regex_replace(temp, "< *p *", "\n<P ", (GRegexCompileFlags)0, true);
+/data001/qe.car/coverity/project/HKMC_ccRC_Slim_Model_JG_DOMESTIC/source/build-ccrc/BUILD/work/aarch64-gnu-linux/player-engine/1.0.0-ccrc.39-r2/git/src/subtitle_lge/sami.cpp
+28char *parser_util_regex_replace(char *src, char *pattern, char *replacement,
+29        GRegexCompileFlags more_flags, bool src_free) {
+30  GRegex *regex = g_regex_new(pattern, (GRegexCompileFlags)((GRegexCompileFlags)REGEX_OPT | more_flags), (GRegexMatchFlags)0, NULL);
+  	1. deref_parm_in_call: Function strlen dereferences src.
+31  gchar *result = g_regex_replace(regex, src, strlen(src), 0, replacement, (GRegexMatchFlags)0, NULL);
+32  g_regex_unref(regex);
+33
+34  if (src_free) {
+35    free(src);
+36  }
+37
+38  return result;
+39}
+=================.=========================
+
+----------------------------------------->>
+
+
+
+307subtitle_text_block *subtitle_text_block_new(int start_time_ms, int end_time_ms, char *text) {
+   	1. returned_null: g_malloc_n returns nullptr.
+   	2. var_assigned: Assigning: block = nullptr return value from g_malloc_n.
+308  subtitle_text_block *block =g_new(subtitle_text_block, 1);
+309
+   	
+CID 14303531 (#1 of 1): Dereference null return value (NULL_RETURNS)
+3. dereference: Dereferencing block, which is known to be nullptr.
+310  block->start_time_ms = start_time_ms;
+311  block->end_time_ms = end_time_ms;
+312  block->text = g_strdup(text);
+313
+314  return block;
+315}
+316
+
+====================================================================================================================================================================================>>>
+
+Hmedia module
+
+TYPE: Uninitialized pointer field
+
+218  HMediaRepeatStatus getRepeat() const {
+     	CID 14304832: Uninitialized pointer field (UNINIT_CTOR) [select issue]
+   	
+CID 14306683 (#1 of 1): Uninitialized pointer field (UNINIT_CTOR)
+1. uninit_member: Non-static class member this is not initialized in this constructor nor in any functions that it calls.
+219    return sx::visit<HMediaRepeatStatus>(_list, [=](auto &l) {
+220      auto r = l->get_repeat();
+221      return this->convert(r);
+222    });
+223  }
+224
+
+
+===========================================>>
+
+
+218  HMediaRepeatStatus getRepeat() const {
+     	CID 14304832: Uninitialized pointer field (UNINIT_CTOR) [select issue]
+   	
+CID 14306683 (#1 of 1): Uninitialized pointer field (UNINIT_CTOR)
+1. uninit_member: Non-static class member this is not initialized in this constructor nor in any functions that it calls.
+219    return sx::visit<HMediaRepeatStatus>(_list, [=](auto &l) {
+220      auto r = l->get_repeat();
+221      return this->convert(r);
+222    });
+223  }
+224
+===========================================>>
+
+CID 14305625 (#1 of 1): Uninitialized pointer field (UNINIT_CTOR)
+1. uninit_member: Non-static class member this is not initialized in this constructor nor in any functions that it calls.
+150    return sx::visit<HResult>(_list, [=](auto& plist) {
+151      using list_type = typename std::decay_t<decltype(plist)>::element_type;
+152      using value_type = typename list_type::value_type;
+
+============================================>>
+
+Thumbnail_extractor module
+
+4ThreadPool::ThreadPool(size_t threads)
+15    : stop(false) {
+16    for(size_t i = 0; i < threads; ++i) {
+17        workers.emplace_back([this] {
+18            while (true) {
+19                std::unique_lock<std::mutex> lock(this->queue_mutex);
+  	
+CID 14302842 (#1 of 1): Uninitialized pointer field (UNINIT_CTOR)
+1. uninit_member: Non-static class member this is not initialized in this constructor nor in any functions that it calls.
+20                this->condition.wait(lock, [this]{ return this->stop || !this->tasks.empty(); });
+21                if(this->stop && this->tasks.empty()) {
+22                    return;
+23                }
+24                std::function<void()> task = std::move(this->tasks.front());
+25                this->tasks.pop();
+26                lock.unlock();
+27
+28                if (task) {
+29                    task();
+30                }
+
+========================================================>>
+
+Media-Browser module
+
+ auto currents() -> rxcpp::observable<boost::optional<indexed_item>> {
+191    return _currents.get_observable()
+192        .merge(rxcpp::observable<>::just(_current_index))
+     	CID 14305227 (2): Uninitialized pointer field (UNINIT_CTOR) [select issue]
+     	CID 14305227 (2): Uninitialized pointer field (UNINIT_CTOR) [select issue]
+   	
+CID 14299988 (#2 of 2): Uninitialized pointer field (UNINIT_CTOR)
+CID 14299988 (#1 of 2): Uninitialized pointer field (UNINIT_CTOR)
+1. uninit_member: Non-static class member this is not initialized in this constructor nor in any functions that it calls.
+193        .map([=](const auto &idx) -> boost::optional<indexed_item> {
+194          return idx ? this->create_indexed_item(*idx) : boost::none;
+195        });
+196  }
+197
+198  auto lists() -> rxcpp::observable<std::shared_ptr<std::vector<T>>> {
+199    return _lists.get_observable().merge(rxcpp::observable<>::just(_list));
+200  }
+201};
